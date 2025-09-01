@@ -58,36 +58,6 @@ const FeedsPage = () => {
     }
   ])
 
-  const [feedItems] = useState([
-    {
-      id: 1,
-      title: 'Breaking: New Technology Breakthrough',
-      feed: 'Tech Updates',
-      status: 'Published',
-      publishDate: '2024-01-15 09:15',
-      views: 456,
-      engagement: 23
-    },
-    {
-      id: 2,
-      title: 'Market Analysis: Q4 Results',
-      feed: 'Daily News Feed',
-      status: 'Published',
-      publishDate: '2024-01-15 10:30',
-      views: 789,
-      engagement: 45
-    },
-    {
-      id: 3,
-      title: 'Championship Game Highlights',
-      feed: 'Sports Highlights',
-      status: 'Draft',
-      publishDate: '2024-01-14 18:45',
-      views: 0,
-      engagement: 0
-    }
-  ])
-
   const getStatusColor = (status) => {
     switch (status) {
       case 'Active':
@@ -253,9 +223,7 @@ const FeedsPage = () => {
           </Card>
         </Grid>
       </Grid>
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
+      <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
               <Typography variant='h6' sx={{ mb: 3, fontWeight: 600 }}>
@@ -334,70 +302,6 @@ const FeedsPage = () => {
             </CardContent>
           </Card>
         </Grid>
-        
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant='h6' sx={{ mb: 3, fontWeight: 600 }}>
-                Recent Feed Items
-              </Typography>
-              <TableContainer component={Paper} variant='outlined'>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Title</TableCell>
-                      <TableCell>Feed</TableCell>
-                      <TableCell>Status</TableCell>
-                      <TableCell>Publish Date</TableCell>
-                      <TableCell>Views</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {feedItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                            {item.title}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={item.feed} 
-                            size='small' 
-                            variant='outlined'
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip 
-                            label={item.status} 
-                            color={getStatusColor(item.status)} 
-                            size='small' 
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant='body2' sx={{ fontSize: '0.75rem' }}>
-                            {item.publishDate}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>{item.views}</TableCell>
-                        <TableCell>
-                          <IconButton size='small' color='info'>
-                            <Icon icon='tabler-eye' />
-                          </IconButton>
-                          <IconButton size='small' color='primary'>
-                            <Icon icon='tabler-edit' />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
     </Box>
   )
 }
