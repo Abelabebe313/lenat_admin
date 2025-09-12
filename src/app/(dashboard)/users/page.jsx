@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 // MUI Imports
 import Card from '@mui/material/Card'
@@ -19,37 +19,41 @@ import TableRow from '@mui/material/TableRow'
 import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
+import Avatar from '@mui/material/Avatar'
+import CircularProgress from '@mui/material/CircularProgress'
+import Alert from '@mui/material/Alert'
 
 // Icon Imports
 import { Icon } from '@iconify/react'
 
+// GraphQL Imports
+import { useQuery } from '@apollo/client/react'
+import { GET_USERS } from '@lib/graphql/queries'
+
 const UsersPage = () => {
-  const [users] = useState([
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john.doe@example.com',
-      role: 'Admin',
-      status: 'Active',
-      lastLogin: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane.smith@example.com',
-      role: 'User',
-      status: 'Active',
-      lastLogin: '2024-01-14'
-    },
-    {
-      id: 3,
-      name: 'Bob Johnson',
-      email: 'bob.johnson@example.com',
-      role: 'Moderator',
-      status: 'Inactive',
-      lastLogin: '2024-01-10'
-    }
-  ])
+  // GraphQL query to fetch users
+  const { data, loading, error } = useQuery(GET_USERS)
+
+  // Transform GraphQL data to match our UI structure
+  const users = useMemo(() => {
+    if (!data?.users) return []
+    
+    return data.users.map(user => ({
+      id: user.id,
+      fullName: user.profile?.full_name || 'Unknown User',
+      email: user.email || 'No email',
+      gender: user.profile?.gender ? 
+        user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1) : 
+        'Unknown',
+      role: 'User', // Default role since it's not in the API response
+      status: user.status,
+      lastLogin: 'N/A', // Not available in the API response
+      avatar: user.profile?.media?.url || null,
+      phoneNumber: user.phone_number,
+      birthDate: user.profile?.birth_date,
+      profile: user.profile
+    }))
+  }, [data])
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -62,17 +66,39 @@ const UsersPage = () => {
     }
   }
 
-  const getRoleColor = (role) => {
-    switch (role) {
-      case 'Admin':
-        return 'error'
-      case 'Moderator':
-        return 'warning'
-      case 'User':
-        return 'primary'
+
+  const getGenderColor = (gender) => {
+    switch (gender) {
+      case 'Male':
+        return 'info'
+      case 'Female':
+        return 'secondary'
       default:
         return 'default'
     }
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity='error' sx={{ mb: 3 }}>
+          Error loading users: {error.message}
+        </Alert>
+        <Button variant='contained' onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </Box>
+    )
   }
 
   return (
@@ -217,9 +243,11 @@ const UsersPage = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Name</TableCell>
+                  <TableCell>User Image</TableCell>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Full Name</TableCell>
                   <TableCell>Email</TableCell>
-                  <TableCell>Role</TableCell>
+                  <TableCell>Gender</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Last Login</TableCell>
                   <TableCell>Actions</TableCell>
@@ -228,12 +256,41 @@ const UsersPage = () => {
               <TableBody>
                 {users.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Avatar 
+                        src={user.avatar} 
+                        alt={user.fullName}
+                        sx={{ width: 40, height: 40 }}
+                      >
+                        {user.fullName.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant='body2' sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                        {user.id.slice(0, 8)}...
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Box>
+                        <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                          {user.fullName}
+                        </Typography>
+                        {user.phoneNumber && (
+                          <Typography variant='caption' color='text.secondary'>
+                            {user.phoneNumber}
+                          </Typography>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant='body2'>
+                        {user.email}
+                      </Typography>
+                    </TableCell>
                     <TableCell>
                       <Chip 
-                        label={user.role} 
-                        color={getRoleColor(user.role)} 
+                        label={user.gender} 
+                        color={getGenderColor(user.gender)} 
                         size='small' 
                       />
                     </TableCell>
@@ -244,10 +301,17 @@ const UsersPage = () => {
                         size='small' 
                       />
                     </TableCell>
-                    <TableCell>{user.lastLogin}</TableCell>
+                    <TableCell>
+                      <Typography variant='body2' sx={{ fontSize: '0.75rem' }}>
+                        {user.lastLogin}
+                      </Typography>
+                    </TableCell>
                     <TableCell>
                       <IconButton size='small' color='primary'>
                         <Icon icon='tabler-edit' />
+                      </IconButton>
+                      <IconButton size='small' color='info'>
+                        <Icon icon='tabler-eye' />
                       </IconButton>
                       <IconButton size='small' color='error'>
                         <Icon icon='tabler-trash' />

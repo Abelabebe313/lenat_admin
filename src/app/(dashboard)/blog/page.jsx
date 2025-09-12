@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 // MUI Imports
 import Card from '@mui/material/Card'
@@ -20,52 +20,52 @@ import Paper from '@mui/material/Paper'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Avatar from '@mui/material/Avatar'
+import CircularProgress from '@mui/material/CircularProgress'
+import Alert from '@mui/material/Alert'
 
 // Icon Imports
 import { Icon } from '@iconify/react'
 
+// GraphQL Imports
+import { useQuery } from '@apollo/client/react'
+import { GET_BLOG_POSTS } from '@lib/graphql/queries'
+
 const BlogPage = () => {
-  const [posts] = useState([
-    {
-      id: 1,
-      title: 'Getting Started with Lenat Platform',
-      author: 'John Doe',
-      category: 'Tutorial',
-      status: 'Published',
-      publishDate: '2024-01-15',
-      views: 1247,
-      likes: 89
-    },
-    {
-      id: 2,
-      title: 'Advanced Features Guide',
-      author: 'Jane Smith',
-      category: 'Guide',
-      status: 'Draft',
-      publishDate: '2024-01-14',
-      views: 0,
-      likes: 0
-    },
-    {
-      id: 3,
-      title: 'Platform Updates - January 2024',
-      author: 'Admin Team',
-      category: 'News',
-      status: 'Published',
-      publishDate: '2024-01-10',
-      views: 2156,
-      likes: 156
-    }
-  ])
+  // GraphQL query to fetch blog posts
+  const { data, loading, error } = useQuery(GET_BLOG_POSTS)
+
+  // Transform GraphQL data to match our UI structure
+  const posts = useMemo(() => {
+    if (!data?.blog_posts) return []
+    
+    return data.blog_posts.map(post => ({
+      id: post.id,
+      title: post.title || `Blog Post ${post.id.slice(0, 8)}`,
+      author: 'Unknown Author', // Not available in API response
+      category: post.type || 'General',
+      status: post.state === 'Accepted' ? 'Published' : post.state,
+      publishDate: new Date(post.updated_at).toLocaleDateString(),
+      views: Math.floor(Math.random() * 1000), // Mock data since not in API
+      likes: Math.floor(Math.random() * 100), // Mock data since not in API
+      media: post.media,
+      updatedAt: post.updated_at,
+      type: post.type,
+      state: post.state,
+      status: post.status
+    }))
+  }, [data])
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'Published':
+      case 'Accepted':
         return 'success'
       case 'Draft':
+      case 'Pending':
         return 'warning'
       case 'Archived':
-        return 'default'
+      case 'Rejected':
+        return 'error'
       default:
         return 'default'
     }
@@ -73,15 +73,42 @@ const BlogPage = () => {
 
   const getCategoryColor = (category) => {
     switch (category) {
-      case 'Tutorial':
+      case 'Baby':
         return 'primary'
-      case 'Guide':
+      case 'Tutorial':
         return 'info'
+      case 'Guide':
+        return 'secondary'
       case 'News':
         return 'success'
+      case 'General':
+        return 'default'
       default:
         return 'default'
     }
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity='error' sx={{ mb: 3 }}>
+          Error loading blog posts: {error.message}
+        </Alert>
+        <Button variant='contained' onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </Box>
+    )
   }
 
   return (
@@ -227,7 +254,6 @@ const BlogPage = () => {
               <TableHead>
                 <TableRow>
                   <TableCell>Title</TableCell>
-                  <TableCell>Author</TableCell>
                   <TableCell>Category</TableCell>
                   <TableCell>Status</TableCell>
                   <TableCell>Publish Date</TableCell>
@@ -241,15 +267,23 @@ const BlogPage = () => {
                   <TableRow key={post.id}>
                     <TableCell>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Avatar sx={{ width: 32, height: 32, fontSize: '0.875rem' }}>
-                          {post.title.charAt(0)}
-                        </Avatar>
+                        {post.media?.url ? (
+                          <Avatar 
+                            src={post.media.url} 
+                            alt={post.title}
+                            sx={{ width: 32, height: 32 }}
+                            variant="rounded"
+                          />
+                        ) : (
+                          <Avatar sx={{ width: 32, height: 32, fontSize: '0.875rem' }}>
+                            {post.title.charAt(0)}
+                          </Avatar>
+                        )}
                         <Typography variant='body2' sx={{ fontWeight: 500 }}>
                           {post.title}
                         </Typography>
                       </Box>
                     </TableCell>
-                    <TableCell>{post.author}</TableCell>
                     <TableCell>
                       <Chip 
                         label={post.category} 
