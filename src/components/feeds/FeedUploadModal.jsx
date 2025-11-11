@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 // MUI Imports
 import Dialog from '@mui/material/Dialog'
@@ -25,9 +25,7 @@ import Chip from '@mui/material/Chip'
 // Icon Imports
 import { Icon } from '@iconify/react'
 
-const FeedUploadModal = ({ open, onClose, onSubmit }) => {
-  // Debug logging
-  console.log('FeedUploadModal render - open:', open)
+const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, success: externalSuccess }) => {
   // Form states
   const [formData, setFormData] = useState({
     title: '',
@@ -161,10 +159,6 @@ const FeedUploadModal = ({ open, onClose, onSubmit }) => {
   const validateForm = () => {
     const newErrors = {}
 
-    if (!formData.title.trim()) {
-      newErrors.title = 'Title is required'
-    }
-
     if (!formData.category) {
       newErrors.category = 'Category is required'
     }
@@ -176,6 +170,21 @@ const FeedUploadModal = ({ open, onClose, onSubmit }) => {
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
+
+  // Clear external error when modal closes or form changes
+  useEffect(() => {
+    if (externalError) {
+      setErrors(prev => ({ ...prev, submit: externalError }))
+    }
+  }, [externalError])
+
+  // Handle success state
+  useEffect(() => {
+    if (externalSuccess) {
+      // Success is handled in parent, just clear local errors
+      setErrors({})
+    }
+  }, [externalSuccess])
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -212,13 +221,16 @@ const FeedUploadModal = ({ open, onClose, onSubmit }) => {
 
   // Handle modal close
   const handleClose = () => {
-    setFormData({
-      title: '',
-      description: '',
-      category: '',
-      file: null
-    })
-    setErrors({})
+    // Only reset if not closing due to success
+    if (!externalSuccess) {
+      setFormData({
+        title: '',
+        description: '',
+        category: '',
+        file: null
+      })
+      setErrors({})
+    }
     setLoading(false)
     setDragActive(false)
     if (fileInputRef.current) {
@@ -248,23 +260,28 @@ const FeedUploadModal = ({ open, onClose, onSubmit }) => {
 
       <form onSubmit={handleSubmit}>
         <DialogContent sx={{ pt: 2 }}>
+          {externalSuccess && (
+            <Alert severity='success' sx={{ mb: 3 }}>
+              Feed uploaded successfully!
+            </Alert>
+          )}
+          
           {errors.submit && (
             <Alert severity='error' sx={{ mb: 3 }}>
               {errors.submit}
             </Alert>
           )}
 
-          {/* Title Field */}
+          {/* Title Field - Optional, for UI purposes only */}
           <TextField
             fullWidth
-            label='Feed Title'
+            label='Feed Title (Optional)'
             placeholder='Enter feed title'
             value={formData.title}
             onChange={handleInputChange('title')}
             error={!!errors.title}
             helperText={errors.title}
             sx={{ mb: 3 }}
-            required
           />
 
           {/* Description Field */}

@@ -31,19 +31,28 @@ import Alert from '@mui/material/Alert'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
 import DialogActions from '@mui/material/DialogActions'
+import Snackbar from '@mui/material/Snackbar'
 
 // Icon Imports
 import { Icon } from '@iconify/react'
 
 // GraphQL Imports
-import { useQuery } from '@apollo/client/react'
-import { GET_FEED_POSTS } from '@lib/graphql/queries'
+import { useQuery, useMutation, useLazyQuery } from '@apollo/client/react'
+import { GET_FEED_POSTS, GET_STORAGE_FEED_POST_URL } from '@lib/graphql/queries'
+import { CREATE_ONE_POST_FEED, DELETE_FEED_POST } from '@lib/graphql/mutations'
 
 // Component Imports
 import FeedUploadModal from '@components/feeds/FeedUploadModal'
 
+// Context Imports
+import { useAuth } from '@contexts/AuthContext'
+
 const FeedsPage = () => {
+  // Auth context
+  const { user } = useAuth()
+  
   // Filter states
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -51,9 +60,39 @@ const FeedsPage = () => {
   
   // Modal states
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [uploadError, setUploadError] = useState(null)
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+
+  // Delete dialog state
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, feedId: null, feedName: '' })
+
+  // Image preview state
+  const [imagePreview, setImagePreview] = useState({ open: false, imageUrl: null, imageName: '' })
+
+  // Snackbar state
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
 
   // GraphQL query to fetch feed posts
-  const { data, loading, error } = useQuery(GET_FEED_POSTS)
+  const { data, loading, error, refetch } = useQuery(GET_FEED_POSTS)
+
+  // Mutation to create feed post
+  const [createFeedPost] = useMutation(CREATE_ONE_POST_FEED)
+
+  // Mutation to delete feed post
+  const [deleteFeedPost, { loading: deleting }] = useMutation(DELETE_FEED_POST, {
+    onCompleted: () => {
+      setSnackbar({ open: true, message: 'Feed post deleted successfully!', severity: 'success' })
+      setDeleteDialog({ open: false, feedId: null, feedName: '' })
+      refetch()
+    },
+    onError: (error) => {
+      setSnackbar({ open: true, message: `Error deleting feed post: ${error.message}`, severity: 'error' })
+      setDeleteDialog({ open: false, feedId: null, feedName: '' })
+    }
+  })
+
+  // Lazy query to get presigned URL
+  const [getStorageUrl] = useLazyQuery(GET_STORAGE_FEED_POST_URL)
 
   // Available categories and statuses based on backend
   const categories = [
@@ -146,29 +185,152 @@ const FeedsPage = () => {
     setSearchQuery('')
   }
 
+  // Handle delete feed post
+  const handleDeleteFeed = (feedId, feedName) => {
+    setDeleteDialog({ open: true, feedId, feedName })
+  }
+
+  // Confirm delete feed post
+  const confirmDeleteFeed = () => {
+    if (deleteDialog.feedId) {
+      deleteFeedPost({
+        variables: { id: deleteDialog.feedId }
+      })
+    }
+  }
+
+  // Handle snackbar close
+  const handleSnackbarClose = () => {
+    setSnackbar(prev => ({ ...prev, open: false }))
+  }
+
+  // Handle image preview
+  const handleImagePreview = (imageUrl, imageName) => {
+    if (imageUrl) {
+      setImagePreview({ open: true, imageUrl, imageName })
+    }
+  }
+
   // Handle feed upload
   const handleFeedUpload = async (formData) => {
+    setUploadError(null)
+    setUploadSuccess(false)
+    
     try {
-      // Here you would typically make an API call to upload the feed
-      // For now, we'll just log the data and show a success message
-      console.log('Uploading feed:', {
-        title: formData.get('title'),
-        description: formData.get('description'),
-        category: formData.get('category'),
-        file: formData.get('file')
+      // Get form values
+      const description = formData.get('description') || ''
+      const category = formData.get('category')
+      const file = formData.get('file')
+      
+      // Validate required fields
+      if (!category) {
+        throw new Error('Category is required')
+      }
+      
+      if (!file) {
+        throw new Error('File is required')
+      }
+
+      // Get user_id from auth context
+      if (!user?.id) {
+        throw new Error('User not authenticated')
+      }
+
+      // Step 1: Create feed post and get ID
+      console.log('Step 1: Creating feed post...')
+      const createResult = await createFeedPost({
+        variables: {
+          description: description,
+          user_id: user.id,
+          category: category
+        }
       })
+
+      const feedPostId = createResult.data?.insert_feed_posts_one?.id
+      if (!feedPostId) {
+        throw new Error('Failed to create feed post')
+      }
+
+      console.log('Feed post created with ID:', feedPostId)
+
+      // Step 2: Get presigned URL for file upload
+      console.log('Step 2: Getting presigned URL...')
+      console.log('File name:', file.name)
+      console.log('Feed post ID:', feedPostId)
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const fileName = file.name
+      const storageResult = await getStorageUrl({
+        variables: {
+          file_name: fileName,
+          object_id: feedPostId
+        }
+      })
+
+      // Log the full response for debugging
+      console.log('Storage URL response:', JSON.stringify(storageResult, null, 2))
       
-      // In a real implementation, you would:
-      // 1. Upload the file to your storage service
-      // 2. Create a feed post record in your database
-      // 3. Refresh the feeds list
+      // Check for GraphQL errors (can exist even with 200 status)
+      if (storageResult.errors && storageResult.errors.length > 0) {
+        const errorMessages = storageResult.errors.map(e => e.message).join(', ')
+        console.error('GraphQL errors:', storageResult.errors)
+        throw new Error(`GraphQL error: ${errorMessages}`)
+      }
       
-      alert('Feed uploaded successfully!')
+      // Check for Apollo Client errors
+      if (storageResult.error) {
+        console.error('Apollo error:', storageResult.error)
+        throw new Error(`GraphQL error: ${storageResult.error.message}`)
+      }
+
+      // Check if data exists
+      if (!storageResult.data) {
+        console.error('No data in response:', storageResult)
+        throw new Error('No data returned from storage URL query')
+      }
+
+      // Try different possible response structures
+      const uploadUrl = storageResult.data?.storage_feed_upload?.url || 
+                       storageResult.data?.storage_feed_upload_url?.url ||
+                       storageResult.data?.url
+
+      if (!uploadUrl) {
+        console.error('Response structure:', storageResult.data)
+        throw new Error(`Failed to get upload URL. Response structure: ${JSON.stringify(storageResult.data)}`)
+      }
+
+      console.log('Got presigned URL:', uploadUrl)
+
+      // Step 3: Upload file to presigned URL
+      console.log('Step 3: Uploading file to MinIO...')
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: {
+          'Content-Type': file.type
+        }
+      })
+
+      if (!uploadResponse.ok) {
+        throw new Error(`File upload failed: ${uploadResponse.statusText}`)
+      }
+
+      console.log('File uploaded successfully')
+
+      // Step 4: Refresh feed list
+      await refetch()
+      
+      // Show success message
+      setUploadSuccess(true)
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        setUploadModalOpen(false)
+        setUploadSuccess(false)
+      }, 1500)
+
     } catch (error) {
       console.error('Upload error:', error)
+      setUploadError(error.message || 'Failed to upload feed. Please try again.')
       throw error
     }
   }
@@ -203,23 +365,18 @@ const FeedsPage = () => {
           <CircularProgress />
         </Box>
         
-        {/* Simple Test Modal */}
-        <Dialog open={uploadModalOpen} onClose={() => setUploadModalOpen(false)}>
-          <DialogTitle>Test Modal</DialogTitle>
-          <DialogContent>
-            <Typography>This is a test modal to see if Dialog works</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setUploadModalOpen(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Debug info */}
-        {process.env.NODE_ENV === 'development' && (
-          <Box sx={{ position: 'fixed', top: 10, right: 10, bg: 'black', color: 'white', p: 1, zIndex: 9999 }}>
-            Modal State: {uploadModalOpen ? 'OPEN' : 'CLOSED'} | Loading: {loading ? 'YES' : 'NO'}
-          </Box>
-        )}
+        {/* Feed Upload Modal */}
+        <FeedUploadModal
+          open={uploadModalOpen}
+          onClose={() => {
+            setUploadModalOpen(false)
+            setUploadError(null)
+            setUploadSuccess(false)
+          }}
+          onSubmit={handleFeedUpload}
+          error={uploadError}
+          success={uploadSuccess}
+        />
       </Box>
     )
   }
@@ -250,23 +407,18 @@ const FeedsPage = () => {
           Retry
         </Button>
         
-        {/* Simple Test Modal */}
-        <Dialog open={uploadModalOpen} onClose={() => setUploadModalOpen(false)}>
-          <DialogTitle>Test Modal</DialogTitle>
-          <DialogContent>
-            <Typography>This is a test modal to see if Dialog works</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setUploadModalOpen(false)}>Close</Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Debug info */}
-        {process.env.NODE_ENV === 'development' && (
-          <Box sx={{ position: 'fixed', top: 10, right: 10, bg: 'black', color: 'white', p: 1, zIndex: 9999 }}>
-            Modal State: {uploadModalOpen ? 'OPEN' : 'CLOSED'} | Error: {error ? 'YES' : 'NO'}
-          </Box>
-        )}
+        {/* Feed Upload Modal */}
+        <FeedUploadModal
+          open={uploadModalOpen}
+          onClose={() => {
+            setUploadModalOpen(false)
+            setUploadError(null)
+            setUploadSuccess(false)
+          }}
+          onSubmit={handleFeedUpload}
+          error={uploadError}
+          success={uploadSuccess}
+        />
       </Box>
     )
   }
@@ -566,8 +718,17 @@ const FeedsPage = () => {
                               <Avatar 
                                 src={feed.media.url} 
                                 alt={feed.name}
-                                sx={{ width: 40, height: 40 }}
+                                sx={{ 
+                                  width: 40, 
+                                  height: 40, 
+                                  cursor: 'pointer',
+                                  transition: 'transform 0.2s ease',
+                                  '&:hover': {
+                                    transform: 'scale(1.1)'
+                                  }
+                                }}
                                 variant="rounded"
+                                onClick={() => handleImagePreview(feed.media.url, feed.name)}
                               />
                             ) : (
                               <Avatar sx={{ width: 40, height: 40, fontSize: '1rem' }}>
@@ -605,13 +766,11 @@ const FeedsPage = () => {
                             </Typography>
                           </TableCell>
                           <TableCell>
-                            <IconButton size='small' color='primary'>
-                              <Icon icon='tabler-edit' />
-                            </IconButton>
-                            <IconButton size='small' color='info'>
-                              <Icon icon='tabler-eye' />
-                            </IconButton>
-                            <IconButton size='small' color='error'>
+                            <IconButton 
+                              size='small' 
+                              color='error'
+                              onClick={() => handleDeleteFeed(feed.id, feed.name)}
+                            >
                               <Icon icon='tabler-trash' />
                             </IconButton>
                           </TableCell>
@@ -639,26 +798,114 @@ const FeedsPage = () => {
           </Card>
         </Grid>
 
-      {/* Simple Test Modal */}
-      <Dialog open={uploadModalOpen} onClose={() => setUploadModalOpen(false)}>
-        <DialogTitle>Test Modal</DialogTitle>
-        <DialogContent>
-          <Typography>This is a test modal to see if Dialog works</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setUploadModalOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Feed Upload Modal */}
       <FeedUploadModal
         open={uploadModalOpen}
         onClose={() => {
-          console.log('Modal closing')
           setUploadModalOpen(false)
+          setUploadError(null)
+          setUploadSuccess(false)
         }}
         onSubmit={handleFeedUpload}
+        error={uploadError}
+        success={uploadSuccess}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, feedId: null, feedName: '' })}
+        aria-labelledby="delete-feed-dialog-title"
+      >
+        <DialogTitle id="delete-feed-dialog-title">
+          Delete Feed Post
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete "{deleteDialog.feedName}"? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setDeleteDialog({ open: false, feedId: null, feedName: '' })}
+            disabled={deleting}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDeleteFeed}
+            color="error"
+            variant="contained"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={16} /> : <Icon icon="tabler-trash" />}
+          >
+            {deleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Image Preview Dialog */}
+      <Dialog
+        open={imagePreview.open}
+        onClose={() => setImagePreview({ open: false, imageUrl: null, imageName: '' })}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            backgroundImage: 'none'
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            color: 'white',
+            pb: 1
+          }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {imagePreview.imageName}
+          </Typography>
+          <IconButton
+            onClick={() => setImagePreview({ open: false, imageUrl: null, imageName: '' })}
+            sx={{ color: 'white' }}
+          >
+            <Icon icon="tabler-x" />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <Box
+            component="img"
+            src={imagePreview.imageUrl || ''}
+            alt={imagePreview.imageName}
+            sx={{
+              maxWidth: '100%',
+              maxHeight: '80vh',
+              objectFit: 'contain',
+              borderRadius: 1
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert 
+          onClose={handleSnackbarClose} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
       
       {/* Debug info */}
       {process.env.NODE_ENV === 'development' && (

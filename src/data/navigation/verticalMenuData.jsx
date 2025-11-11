@@ -25,6 +25,11 @@ const verticalMenuData = () => [
     icon: 'tabler-shopping-cart',
   },
   {
+    label: 'Orders',
+    href: '/orders',
+    icon: 'tabler-shopping-bag',
+  },
+  {
     label: 'Trivia Games',
     href: '/trivia',
     icon: 'tabler-puzzle',

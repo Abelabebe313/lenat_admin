@@ -13,7 +13,7 @@ A comprehensive admin dashboard built with Next.js and Material-UI for managing 
 
 ## Getting Started
 
-First, install the dependencies:
+### 1. Install Dependencies
 
 ```bash
 npm install
@@ -23,7 +23,25 @@ yarn install
 pnpm install
 ```
 
-Then, run the development server:
+### 2. Environment Setup
+
+Create a `.env.local` file in the root directory (you can copy from `.env.example`):
+
+```bash
+cp .env.example .env.local
+```
+
+Then edit `.env.local` and fill in your configuration:
+
+```env
+NEXT_PUBLIC_GRAPHQL_ENDPOINT=https://api.lenatmom.com/v1/graphql
+NEXT_PUBLIC_HASURA_ADMIN_SECRET=your_admin_secret_here
+NEXT_PUBLIC_APP_ENV=development
+```
+
+📖 **For detailed environment setup instructions, see [ENV_SETUP.md](./ENV_SETUP.md)**
+
+### 3. Run Development Server
 
 ```bash
 npm run dev

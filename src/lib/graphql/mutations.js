@@ -23,3 +23,104 @@ export const AUTH_OTP_CALLBACK = gql`
     }
   }
 `
+
+// Mutation to refresh access token
+export const REFRESH_TOKEN = gql`
+  mutation RefreshToken($refresh_token: String!) {
+    auth_refresh_tokens(refresh_token: $refresh_token) {
+      access_token
+      refresh_token
+    }
+  }
+`
+
+// Mutation to update trivia question
+export const UPDATE_TRIVIA_QUESTION = gql`
+  mutation UpdateTriviaQuestion($id: uuid!, $content: String!, $answer: String!, $options: jsonb!) {
+    update_game_trivia_questions_by_pk(
+      pk_columns: { id: $id }
+      _set: { 
+        content: $content
+        answer: $answer
+        options: $options
+      }
+    ) {
+      id
+      content
+      answer
+      options
+    }
+  }
+`
+
+// Mutation to delete trivia question
+export const DELETE_TRIVIA_QUESTION = gql`
+  mutation DeleteTriviaQuestion($id: uuid!) {
+    delete_game_trivia_questions_by_pk(id: $id) {
+      id
+    }
+  }
+`
+
+// Mutation to delete trivia (with cascade delete for questions)
+export const DELETE_TRIVIA = gql`
+  mutation DeleteTrivia($id: uuid!) {
+    delete_game_trivia_by_pk(id: $id) {
+      id
+      description
+      name
+      state
+    }
+  }
+`
+
+// Mutation to delete trivia questions first, then trivia
+export const DELETE_TRIVIA_WITH_QUESTIONS = gql`
+  mutation DeleteTriviaWithQuestions($triviaId: uuid!) {
+    # First delete all questions for this trivia
+    delete_game_trivia_questions(where: { trivia_id: { _eq: $triviaId } }) {
+      affected_rows
+    }
+    # Then delete the trivia
+    delete_game_trivia_by_pk(id: $triviaId) {
+      id
+      description
+      name
+      state
+    }
+  }
+`
+
+// Mutation to insert new trivia
+export const INSERT_TRIVIA = gql`
+  mutation InsertTrivia($trivia: game_trivia_insert_input!) {
+    insert_game_trivia_one(object: $trivia) {
+      id
+      name
+      index
+      state
+      description
+      user_id
+      created_at
+      updated_at
+    }
+  }
+`
+
+// Mutation to create a feed post
+export const CREATE_ONE_POST_FEED = gql`
+  mutation CreateOnePostFeed($description: String, $user_id: uuid!, $category: enum_feed_type_enum, $state: enum_generic_state_enum = Accepted) {
+    insert_feed_posts_one(object: {description: $description, user_id: $user_id, category: $category, state: $state}) {
+      id
+    }
+  }
+`
+
+// Mutation to delete a feed post
+export const DELETE_FEED_POST = gql`
+  mutation DeleteFeedPost($id: uuid!) {
+    delete_feed_posts_by_pk(id: $id) {
+      id
+    }
+  }
+`

@@ -83,3 +83,46 @@ export const updateAccessToken = (newAccessToken) => {
     localStorage.setItem(TOKEN_KEYS.ACCESS_TOKEN, newAccessToken)
   }
 }
+
+// Update both access and refresh tokens
+export const updateTokens = (accessToken, refreshToken) => {
+  if (typeof window !== 'undefined') {
+    if (accessToken) {
+      localStorage.setItem(TOKEN_KEYS.ACCESS_TOKEN, accessToken)
+    }
+    if (refreshToken) {
+      localStorage.setItem(TOKEN_KEYS.REFRESH_TOKEN, refreshToken)
+    }
+  }
+}
+
+// Check if access token is expired or will expire soon (within 2 minutes)
+export const isAccessTokenExpired = (bufferMinutes = 2) => {
+  const token = getAccessToken()
+  if (!token) return true
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const currentTime = Date.now() / 1000
+    const bufferTime = bufferMinutes * 60 // Convert minutes to seconds
+    return payload.exp <= (currentTime + bufferTime)
+  } catch (error) {
+    console.error('Error checking token expiration:', error)
+    return true
+  }
+}
+
+// Check if refresh token is expired
+export const isRefreshTokenExpired = () => {
+  const token = getRefreshToken()
+  if (!token) return true
+  
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const currentTime = Date.now() / 1000
+    return payload.exp <= currentTime
+  } catch (error) {
+    console.error('Error checking refresh token expiration:', error)
+    return true
+  }
+}

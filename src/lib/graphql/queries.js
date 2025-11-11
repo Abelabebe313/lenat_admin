@@ -61,3 +61,92 @@ export const GET_BLOG_POSTS = gql`
     }
   }
 `
+
+// Query to fetch trivia games
+export const GET_TRIVIA_GAMES = gql`
+  query GetTriviaGames {
+    game_trivia {
+      id
+      name
+      description
+      state
+      created_at
+      updated_at
+    }
+  }
+`
+
+// Query to fetch trivia questions by ID
+export const GET_TRIVIA_QUESTIONS = gql`
+  query GetTriviaQuestions($id: uuid!) {
+    game_trivia_by_pk(id: $id) {
+      id
+      description
+      questions {
+        trivia_id
+        content
+        answer
+        options
+        explanation
+        id
+      }
+    }
+  }
+`
+
+// Query to fetch marketplace products
+export const GET_MARKETPLACE_PRODUCTS = gql`
+  query GetMarketplaceProducts {
+    marketplace_products {
+      id
+      name
+      price
+      product_categories {
+        category_id
+        category {
+          name
+        }
+      }
+      product_images {
+        medium {
+          url
+          blur_hash
+        }
+      }
+    }
+  }
+`
+
+// Query to fetch marketplace orders
+export const GET_MARKETPLACE_ORDERS = gql`
+  query GetMarketplaceOrders {
+    marketplace_orders {
+      id
+      items {
+        order_id
+        product_id
+        product {
+          id
+          name
+          price
+          state
+          user_id
+          description
+        }
+        quantity
+      }
+      state
+      created_at
+      updated_at
+    }
+  }
+`
+
+// Query to get presigned URL for feed post image upload
+export const GET_STORAGE_FEED_POST_URL = gql`
+  query GetStorageFeedPostUrl($file_name: String!, $object_id: String!) {
+    storage_feed_upload(file_name: $file_name, object_id: $object_id) {
+      url
+    }
+  }
+`
