@@ -217,6 +217,7 @@ const FeedsPage = () => {
     setUploadSuccess(false)
     
     try {
+      console.log("i'm now running")
       // Get form values
       const description = formData.get('description') || ''
       const category = formData.get('category')

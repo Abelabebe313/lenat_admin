@@ -1,7 +1,7 @@
 import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client/core'
 import { setContext } from '@apollo/client/link/context'
 import { onError } from '@apollo/client/link/error'
-import { getRefreshToken, updateTokens, clearTokens, isRefreshTokenExpired } from '@utils/tokenManager'
+import { getRefreshToken, updateTokens, clearTokens, isRefreshTokenExpired, isAccessTokenExpired, getAccessToken } from '@utils/tokenManager'
 import { REFRESH_TOKEN } from '@lib/graphql/mutations'
 
 // Track if we're currently refreshing the token to prevent multiple simultaneous refresh attempts
@@ -34,12 +34,158 @@ const httpLink = createHttpLink({
   uri: process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT || 'https://api.lenatmom.com/v1/graphql',
 })
 
-// Create auth link to add JWT token to requests
-const authLink = setContext((_, { headers }) => {
+// Helper function to proactively refresh token
+const proactiveTokenRefresh = async () => {
+  // Check if refresh token is expired
+  if (isRefreshTokenExpired()) {
+    // Refresh token is expired, logout user
+    if (typeof window !== 'undefined') {
+      clearTokens()
+      window.location.href = '/login'
+    }
+    throw new Error('Refresh token expired')
+  }
+
+  const refreshToken = getRefreshToken()
+
+  if (!refreshToken) {
+    // No refresh token available, logout user
+    if (typeof window !== 'undefined') {
+      clearTokens()
+      window.location.href = '/login'
+    }
+    throw new Error('No refresh token available')
+  }
+
+  // Create a temporary client for the refresh mutation (without error link to avoid infinite loop)
+  const refreshAuthLink = setContext((_, { headers }) => {
+    return {
+      headers: {
+        ...headers,
+        'content-type': 'application/json',
+        'x-hasura-admin-secret': process.env.NEXT_PUBLIC_HASURA_ADMIN_SECRET || '',
+      }
+    }
+  })
+
+  const tempClient = new ApolloClient({
+    link: refreshAuthLink.concat(httpLink),
+    cache: new InMemoryCache(),
+  })
+
+  // Call refresh token mutation
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Proactively refreshing access token...')
+  }
+
+  try {
+    const { data } = await tempClient.mutate({
+      mutation: REFRESH_TOKEN,
+      variables: { refresh_token: refreshToken },
+    })
+
+    // Update tokens in localStorage
+    if (data?.auth_refresh_tokens?.access_token) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Token proactively refreshed successfully')
+      }
+
+      // Always save both tokens - refresh token mutation returns both new tokens
+      const newAccessToken = data.auth_refresh_tokens.access_token
+      const newRefreshToken = data.auth_refresh_tokens.refresh_token || refreshToken
+
+      updateTokens(newAccessToken, newRefreshToken)
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Both tokens updated:', {
+          hasAccessToken: !!newAccessToken,
+          hasRefreshToken: !!newRefreshToken
+        })
+      }
+
+      return newAccessToken
+    } else {
+      throw new Error('No access token received from refresh')
+    }
+  } catch (error) {
+    console.error('Proactive token refresh failed:', error)
+
+    if (typeof window !== 'undefined') {
+      clearTokens()
+      window.location.href = '/login'
+    }
+
+    throw error
+  }
+}
+
+// Create auth link to add JWT token to requests and proactively refresh if needed
+const authLink = setContext(async (operation, { headers }) => {
+  // Skip token refresh for authentication operations (login, OTP, refresh)
+  const authOperations = ['RefreshToken', 'AuthOtp', 'AuthOtpCallback']
+  if (authOperations.includes(operation.operationName)) {
+    return {
+      headers: {
+        ...headers,
+        'content-type': 'application/json',
+        'x-hasura-admin-secret': process.env.NEXT_PUBLIC_HASURA_ADMIN_SECRET || '',
+      }
+    }
+  }
+
+  // Get the current access token
+  const currentToken = getAccessToken()
+
+  // Only attempt token refresh if user is logged in (has a token)
+  // and the token is expired or about to expire (within 2 minutes)
+  if (typeof window !== 'undefined' && currentToken && isAccessTokenExpired(2)) {
+    // If we're already refreshing, wait for it to complete
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ operation, resolve, reject })
+      }).then((newToken) => {
+        const userId = localStorage.getItem('user_id')
+        return {
+          headers: {
+            ...headers,
+            'content-type': 'application/json',
+            'x-hasura-admin-secret': process.env.NEXT_PUBLIC_HASURA_ADMIN_SECRET || '',
+            authorization: newToken ? `Bearer ${newToken}` : '',
+            'x-hasura-user-id': userId || '',
+          }
+        }
+      })
+    }
+
+    // Start token refresh process
+    isRefreshing = true
+
+    try {
+      const newToken = await proactiveTokenRefresh()
+      processQueue(null, newToken)
+      isRefreshing = false
+
+      const userId = localStorage.getItem('user_id')
+      return {
+        headers: {
+          ...headers,
+          'content-type': 'application/json',
+          'x-hasura-admin-secret': process.env.NEXT_PUBLIC_HASURA_ADMIN_SECRET || '',
+          authorization: newToken ? `Bearer ${newToken}` : '',
+          'x-hasura-user-id': userId || '',
+        }
+      }
+    } catch (error) {
+      processQueue(error, null)
+      isRefreshing = false
+      throw error
+    }
+  }
+
   // Get the authentication token and user ID from localStorage if it exists
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null
+  const token = getAccessToken()
   const userId = typeof window !== 'undefined' ? localStorage.getItem('user_id') : null
-  
+
   // Return the headers to the context so httpLink can read them
   return {
     headers: {
