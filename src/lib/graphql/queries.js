@@ -101,6 +101,9 @@ export const GET_MARKETPLACE_PRODUCTS = gql`
       id
       name
       price
+      description
+      is_active
+      is_featured
       product_categories {
         category_id
         category {
@@ -155,6 +158,15 @@ export const GET_STORAGE_FEED_POST_URL = gql`
 export const GET_STORAGE_BLOG_POST_URL = gql`
   query GetStorageBlogPostUrl($file_name: String!, $object_id: String!) {
     storage_blog_upload(file_name: $file_name, object_id: $object_id) {
+      url
+    }
+  }
+`
+
+// Query to get presigned URL for marketplace product image upload
+export const GET_STORAGE_MARKETPLACE_PRODUCT_URL = gql`
+  query GetStorageMarketplaceProductUrl($file_name: String!, $object_id: String!) {
+    storage_product_upload(file_name: $file_name, object_id: $object_id) {
       url
     }
   }

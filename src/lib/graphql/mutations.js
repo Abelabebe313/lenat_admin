@@ -143,3 +143,59 @@ export const DELETE_BLOG_POST = gql`
     }
   }
 `
+
+// Mutation to create a marketplace product
+export const CREATE_MARKETPLACE_PRODUCT = gql`
+  mutation CreateProduct($name: String!, $price: numeric!, $description: String, $is_active: Boolean, $is_featured: Boolean, $user_id: uuid!) {
+    insert_marketplace_products_one(
+      object: {
+        name: $name
+        price: $price
+        description: $description
+        is_active: $is_active
+        is_featured: $is_featured
+        user_id: $user_id
+      }
+    ) {
+      id
+      name
+      price
+      description
+      is_active
+      is_featured
+      user_id
+    }
+  }
+`
+
+// Mutation to update a marketplace product
+export const UPDATE_MARKETPLACE_PRODUCT = gql`
+  mutation UpdateProduct($id: uuid!, $name: String, $price: numeric, $description: String, $is_active: Boolean, $is_featured: Boolean) {
+    update_marketplace_products_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        name: $name
+        price: $price
+        description: $description
+        is_active: $is_active
+        is_featured: $is_featured
+      }
+    ) {
+      id
+      name
+      price
+      description
+      is_active
+      is_featured
+    }
+  }
+`
+
+// Mutation to delete a marketplace product
+export const DELETE_MARKETPLACE_PRODUCT = gql`
+  mutation DeleteProduct($id: uuid!) {
+    delete_marketplace_products_by_pk(id: $id) {
+      id
+    }
+  }
+`
