@@ -19,18 +19,17 @@ import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Paper from '@mui/material/Paper'
-import IconButton from '@mui/material/IconButton'
 import Chip from '@mui/material/Chip'
 
 // Icon Imports
 import { Icon } from '@iconify/react'
 
-const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, success: externalSuccess }) => {
+const BlogUploadModal = ({ open, onClose, onSubmit, error: externalError, success: externalSuccess }) => {
   // Form states
   const [formData, setFormData] = useState({
     title: '',
-    description: '',
-    category: '',
+    content: '',
+    type: '',
     file: null
   })
   const [errors, setErrors] = useState({})
@@ -40,22 +39,8 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
   // File input ref
   const fileInputRef = useRef(null)
 
-  // Available categories (same as in feeds page)
-  const categories = [
-    'Prenatal_Stage',
-    'First_Trimester', 
-    'Second_Trimester',
-    'Third_Trimester',
-    'Labor_and_Delivery',
-    'Postpartum',
-    'Child_Growth',
-    'Fatherhood'
-  ]
-
-  // Format category names for display
-  const formatCategoryName = (category) => {
-    return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-  }
+  // Available blog post types
+  const blogTypes = ['Baby', 'First', 'Parental_Care', 'Second', 'Third']
 
   // Handle form input changes
   const handleInputChange = (field) => (event) => {
@@ -159,8 +144,12 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
   const validateForm = () => {
     const newErrors = {}
 
-    if (!formData.category) {
-      newErrors.category = 'Category is required'
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required'
+    }
+
+    if (!formData.type) {
+      newErrors.type = 'Type is required'
     }
 
     if (!formData.file) {
@@ -199,8 +188,8 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
       // Create FormData for file upload
       const uploadData = new FormData()
       uploadData.append('title', formData.title)
-      uploadData.append('description', formData.description)
-      uploadData.append('category', formData.category)
+      uploadData.append('content', formData.content)
+      uploadData.append('type', formData.type)
       uploadData.append('file', formData.file)
 
       // Call the onSubmit prop with the form data
@@ -212,7 +201,7 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
       console.error('Upload error:', error)
       setErrors(prev => ({
         ...prev,
-        submit: 'Failed to upload feed. Please try again.'
+        submit: 'Failed to upload blog post. Please try again.'
       }))
     } finally {
       setLoading(false)
@@ -223,13 +212,13 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
   const handleClose = () => {
     // Only reset if not closing due to success
     if (!externalSuccess) {
-    setFormData({
-      title: '',
-      description: '',
-      category: '',
-      file: null
-    })
-    setErrors({})
+      setFormData({
+        title: '',
+        content: '',
+        type: '',
+        file: null
+      })
+      setErrors({})
     }
     setLoading(false)
     setDragActive(false)
@@ -243,7 +232,7 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
     <Dialog 
       open={open} 
       onClose={handleClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: { borderRadius: 2 }
@@ -251,9 +240,9 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
     >
       <DialogTitle sx={{ pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Icon icon='tabler-upload' style={{ fontSize: 24 }} />
+          <Icon icon='tabler-article' style={{ fontSize: 24 }} />
           <Box component="span" sx={{ fontWeight: 600 }}>
-            Upload New Feed
+            Create New Blog Post
           </Box>
         </Box>
       </DialogTitle>
@@ -262,7 +251,7 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
         <DialogContent sx={{ pt: 2 }}>
           {externalSuccess && (
             <Alert severity='success' sx={{ mb: 3 }}>
-              Feed uploaded successfully!
+              Blog post created successfully!
             </Alert>
           )}
           
@@ -272,56 +261,57 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
             </Alert>
           )}
 
-          {/* Title Field - Optional, for UI purposes only */}
+          {/* Title Field */}
           <TextField
             fullWidth
-            label='Feed Title (Optional)'
-            placeholder='Enter feed title'
+            label='Blog Title'
+            placeholder='Enter blog post title'
             value={formData.title}
             onChange={handleInputChange('title')}
             error={!!errors.title}
             helperText={errors.title}
             sx={{ mb: 3 }}
+            required
           />
 
-          {/* Description Field */}
-          <TextField
-            fullWidth
-            label='Description'
-            placeholder='Enter feed description (optional)'
-            value={formData.description}
-            onChange={handleInputChange('description')}
-            multiline
-            rows={3}
-            sx={{ mb: 3 }}
-          />
-
-          {/* Category Selector */}
-          <FormControl fullWidth sx={{ mb: 3 }} error={!!errors.category}>
-            <InputLabel>Category</InputLabel>
+          {/* Type Selector */}
+          <FormControl fullWidth sx={{ mb: 3 }} error={!!errors.type}>
+            <InputLabel>Type</InputLabel>
             <Select
-              value={formData.category}
-              label='Category'
-              onChange={handleInputChange('category')}
+              value={formData.type}
+              label='Type'
+              onChange={handleInputChange('type')}
               required
             >
-              {categories.map((category) => (
-                <MenuItem key={category} value={category}>
-                  {formatCategoryName(category)}
+              {blogTypes.map((type) => (
+                <MenuItem key={type} value={type}>
+                  {type}
                 </MenuItem>
               ))}
             </Select>
-            {errors.category && (
+            {errors.type && (
               <Typography variant='caption' color='error' sx={{ mt: 1, ml: 2 }}>
-                {errors.category}
+                {errors.type}
               </Typography>
             )}
           </FormControl>
 
+          {/* Content Field - Wide text area for large content */}
+          <TextField
+            fullWidth
+            label='Content'
+            placeholder='Write your blog post content here...'
+            value={formData.content}
+            onChange={handleInputChange('content')}
+            multiline
+            rows={8}
+            sx={{ mb: 3 }}
+          />
+
           {/* File Upload Area */}
           <Box sx={{ mb: 3 }}>
             <Typography variant='subtitle2' sx={{ mb: 2, fontWeight: 600 }}>
-              Upload Image
+              Upload Featured Image
             </Typography>
             
             <Paper
@@ -408,7 +398,7 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
             disabled={loading}
             startIcon={loading ? <CircularProgress size={16} /> : <Icon icon='tabler-upload' />}
           >
-            {loading ? 'Uploading...' : 'Upload Feed'}
+            {loading ? 'Creating...' : 'Create Blog Post'}
           </Button>
         </DialogActions>
       </form>
@@ -416,4 +406,5 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
   )
 }
 
-export default FeedUploadModal
+export default BlogUploadModal
+

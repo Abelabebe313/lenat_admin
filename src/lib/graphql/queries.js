@@ -150,3 +150,12 @@ export const GET_STORAGE_FEED_POST_URL = gql`
     }
   }
 `
+
+// Query to get presigned URL for blog post image upload
+export const GET_STORAGE_BLOG_POST_URL = gql`
+  query GetStorageBlogPostUrl($file_name: String!, $object_id: String!) {
+    storage_blog_upload(file_name: $file_name, object_id: $object_id) {
+      url
+    }
+  }
+`

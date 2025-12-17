@@ -531,36 +531,6 @@ const FeedsPage = () => {
             </CardContent>
           </Card>
         </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'info.15'
-                  }}
-                >
-                  <Icon icon='tabler-users' style={{ fontSize: 24, color: 'info.main' }} />
-                </Box>
-                <Box>
-                  <Typography variant='h4' sx={{ fontWeight: 700 }}>
-                    {totalSubscribers.toLocaleString()}
-                  </Typography>
-                  <Typography variant='body2' color='text.secondary'>
-                    Total Subscribers
-                  </Typography>
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
 
       {/* Filter Controls */}
@@ -863,12 +833,11 @@ const FeedsPage = () => {
             justifyContent: 'space-between',
             alignItems: 'center',
             color: 'white',
-            pb: 1
+            pb: 1,
+            fontWeight: 600
           }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            {imagePreview.imageName}
-          </Typography>
+          {imagePreview.imageName}
           <IconButton
             onClick={() => setImagePreview({ open: false, imageUrl: null, imageName: '' })}
             sx={{ color: 'white' }}

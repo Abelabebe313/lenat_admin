@@ -124,3 +124,22 @@ export const DELETE_FEED_POST = gql`
     }
   }
 `
+
+// Mutation to create a blog post
+export const CREATE_ONE_BLOG_POST = gql`
+  mutation CreateOneBlogPost($user_id: uuid!, $state: enum_generic_state_enum = Accepted, $title: String, $content: String, $type: enum_blog_type_enum) {
+    insert_blog_posts_one(object: {user_id: $user_id, state: $state, title: $title, content: $content, type: $type}) {
+      id
+      status
+    }
+  }
+`
+
+// Mutation to delete a blog post
+export const DELETE_BLOG_POST = gql`
+  mutation DeleteBlogPost($id: uuid!) {
+    delete_blog_posts_by_pk(id: $id) {
+      id
+    }
+  }
+`

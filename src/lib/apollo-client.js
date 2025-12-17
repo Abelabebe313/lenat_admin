@@ -10,11 +10,20 @@ let failedQueue = []
 
 // Process failed requests queue after token refresh
 const processQueue = (error, token = null) => {
-  failedQueue.forEach(promise => {
+  failedQueue.forEach(({ operation, resolve, reject }) => {
     if (error) {
-      promise.reject(error)
+      reject(error)
     } else {
-      promise.resolve(token)
+      // Update operation context with new token before resolving
+      if (operation && token) {
+        operation.setContext({
+          headers: {
+            ...operation.getContext().headers,
+            authorization: `Bearer ${token}`
+          }
+        })
+      }
+      resolve(token)
     }
   })
   failedQueue = []
@@ -48,10 +57,10 @@ const handleTokenRefresh = (operation, forward) => {
   // If we're already refreshing, queue this request
   if (isRefreshing) {
     return new Promise((resolve, reject) => {
-      failedQueue.push({ resolve, reject })
+      failedQueue.push({ operation, resolve, reject })
     })
       .then(() => {
-        // Retry the request with new token
+        // Retry the request with new token (operation context already updated in processQueue)
         return forward(operation)
       })
       .catch(err => {
@@ -117,14 +126,30 @@ const handleTokenRefresh = (operation, forward) => {
           console.log('Token refreshed successfully, retrying original request...')
         }
         
-        updateTokens(
-          data.auth_refresh_tokens.access_token,
-          data.auth_refresh_tokens.refresh_token || refreshToken // Use new refresh token if provided, otherwise keep old one
-        )
+        // Always save both tokens - refresh token mutation returns both new tokens
+        const newAccessToken = data.auth_refresh_tokens.access_token
+        const newRefreshToken = data.auth_refresh_tokens.refresh_token || refreshToken
+        
+        updateTokens(newAccessToken, newRefreshToken)
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Both tokens updated:', {
+            hasAccessToken: !!newAccessToken,
+            hasRefreshToken: !!newRefreshToken
+          })
+        }
         
         // Process queued requests
-        processQueue(null, data.auth_refresh_tokens.access_token)
+        processQueue(null, newAccessToken)
         isRefreshing = false
+        
+        // Update the operation's headers with the new token before retrying
+        operation.setContext({
+          headers: {
+            ...operation.getContext().headers,
+            authorization: `Bearer ${newAccessToken}`
+          }
+        })
         
         // Retry the original request with new token
         return forward(operation)
@@ -174,7 +199,12 @@ const isTokenError = (graphQLErrors, networkError) => {
         errorMessage.includes('invalid token') ||
         errorMessage.includes('token invalid') ||
         errorMessage.includes('authentication') ||
-        errorMessage.includes('access denied')
+        errorMessage.includes('access denied') ||
+        (errorMessage.includes('token') && (
+          errorMessage.includes('expired') ||
+          errorMessage.includes('invalid') ||
+          errorMessage.includes('error')
+        ))
       )
     })
   }
@@ -193,6 +223,12 @@ const errorLink = onError(({ graphQLErrors, networkError, operation, forward }) 
         operation: operation.operationName
       })
     }
+    
+    // Don't retry refresh token mutation itself
+    if (operation.operationName === 'RefreshToken') {
+      return
+    }
+    
     return handleTokenRefresh(operation, forward)
   }
 })
