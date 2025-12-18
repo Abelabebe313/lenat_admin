@@ -203,6 +203,11 @@ export const UPDATE_MARKETPLACE_PRODUCT = gql`
 // Mutation to delete a marketplace product
 export const DELETE_MARKETPLACE_PRODUCT = gql`
   mutation DeleteProduct($id: uuid!) {
+    # First delete related product categories
+    delete_marketplace_product_categories(where: {product_id: {_eq: $id}}) {
+      affected_rows
+    }
+    # Then delete the product
     delete_marketplace_products_by_pk(id: $id) {
       id
     }
