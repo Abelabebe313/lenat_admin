@@ -126,10 +126,19 @@ export const GET_MARKETPLACE_PRODUCTS = gql`
       description
       is_active
       is_featured
+      created_at
+      state
+      user_id
+      variants
       product_categories {
         category_id
         category {
           name
+        }
+      }
+      product_categories_aggregate {
+        aggregate {
+          count
         }
       }
       product_images {
@@ -137,6 +146,11 @@ export const GET_MARKETPLACE_PRODUCTS = gql`
           url
           blur_hash
         }
+      }
+    }
+    marketplace_products_aggregate {
+      aggregate {
+        count
       }
     }
   }

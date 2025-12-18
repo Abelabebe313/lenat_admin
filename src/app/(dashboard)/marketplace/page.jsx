@@ -1,7 +1,7 @@
 'use client'
 
 // React Imports
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 // Apollo Client Imports
 import { useQuery, useMutation, useLazyQuery } from '@apollo/client/react'
@@ -340,10 +340,26 @@ const MarketplacePage = () => {
     setSnackbar(prev => ({ ...prev, open: false }))
   }
 
-  const totalRevenue = products.reduce((sum, product) => sum + product.revenue, 0)
-  const totalSales = products.reduce((sum, product) => sum + product.sales, 0)
-  const totalProducts = products.length
-  const activeProducts = products.filter(product => product.status === 'Active').length
+  // Analytics calculations
+  const analytics = useMemo(() => {
+    if (!data?.marketplace_products) return {
+      total: 0,
+      active: 0,
+      featured: 0,
+      totalValue: 0
+    }
+
+    const products = data.marketplace_products
+    const total = data.marketplace_products_aggregate?.aggregate?.count || products.length
+    const active = products.filter(p => p.is_active).length
+    const inactive = total - active
+    const featured = products.filter(p => p.is_featured).length
+    const nonFeatured = total - featured
+    const totalValue = products.reduce((sum, p) => sum + (Number(p.price) || 0), 0)
+    const avgPrice = total > 0 ? totalValue / total : 0
+
+    return { total, active, inactive, featured, nonFeatured, totalValue, avgPrice }
+  }, [data])
 
   // Show loading state
   if (loading) {
@@ -483,121 +499,137 @@ const MarketplacePage = () => {
       </Box>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
+        {/* Inventory Overview Card */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%', position: 'relative', overflow: 'visible' }}>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box>
+                  <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
+                    Total Inventory
+                  </Typography>
+                  <Typography variant='h3' sx={{ fontWeight: 700, color: 'primary.main' }}>
+                    {analytics.total}
+                  </Typography>
+                </Box>
+                <Avatar
+                  variant='rounded'
                   sx={{
                     width: 48,
                     height: 48,
-                    borderRadius: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'primary.15'
+                    bgcolor: 'primary.main',
+                    boxShadow: '0 4px 20px 0 rgba(0,0,0,0.14)'
                   }}
                 >
-                  <Icon icon='tabler-package' style={{ fontSize: 24, color: 'primary.main' }} />
+                  <Icon icon='tabler-package' fontSize={28} />
+                </Avatar>
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'success.5', p: 1, borderRadius: 1, pr: 2 }}>
+                  <Avatar sx={{ width: 24, height: 24, bgcolor: 'success.main' }}>
+                    <Icon icon='tabler-check' fontSize={14} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>{analytics.active}</Typography>
+                    <Typography variant='caption' color='text.secondary'>Active</Typography>
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant='h4' sx={{ fontWeight: 700 }}>
-                    {totalProducts}
-                  </Typography>
-                  <Typography variant='body2' color='text.secondary'>
-                    Total Products
-                  </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'error.5', p: 1, borderRadius: 1, pr: 2 }}>
+                  <Avatar sx={{ width: 24, height: 24, bgcolor: 'error.main' }}>
+                    <Icon icon='tabler-x' fontSize={14} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>{analytics.inactive}</Typography>
+                    <Typography variant='caption' color='text.secondary'>Inactive</Typography>
+                  </Box>
                 </Box>
               </Box>
             </CardContent>
           </Card>
         </Grid>
         
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
+        {/* Promotion Status Card */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box>
+                  <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
+                    Featured Products
+                  </Typography>
+                  <Typography variant='h3' sx={{ fontWeight: 700, color: 'warning.main' }}>
+                    {analytics.featured}
+                  </Typography>
+                </Box>
+                <Avatar
+                  variant='rounded'
                   sx={{
                     width: 48,
                     height: 48,
-                    borderRadius: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'success.15'
+                    bgcolor: 'warning.main',
+                    boxShadow: '0 4px 20px 0 rgba(0,0,0,0.14)'
                   }}
                 >
-                  <Icon icon='tabler-currency-dollar' style={{ fontSize: 24, color: 'success.main' }} />
+                  <Icon icon='tabler-star' fontSize={28} />
+                </Avatar>
+              </Box>
+
+              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'warning.5', p: 1, borderRadius: 1, pr: 2 }}>
+                  <Avatar sx={{ width: 24, height: 24, bgcolor: 'warning.main' }}>
+                    <Icon icon='tabler-star-filled' fontSize={14} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>{analytics.featured}</Typography>
+                    <Typography variant='caption' color='text.secondary'>Featured</Typography>
+                  </Box>
                 </Box>
-                <Box>
-                  <Typography variant='h4' sx={{ fontWeight: 700 }}>
-                    ${totalRevenue.toLocaleString()}
-                  </Typography>
-                  <Typography variant='body2' color='text.secondary'>
-                    Total Revenue
-                  </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: 'secondary.5', p: 1, borderRadius: 1, pr: 2 }}>
+                  <Avatar sx={{ width: 24, height: 24, bgcolor: 'secondary.main' }}>
+                    <Icon icon='tabler-box' fontSize={14} />
+                  </Avatar>
+                  <Box>
+                    <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>{analytics.nonFeatured}</Typography>
+                    <Typography variant='caption' color='text.secondary'>Standard</Typography>
+                  </Box>
                 </Box>
               </Box>
             </CardContent>
           </Card>
         </Grid>
         
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
+        {/* Financial Value Card */}
+        <Grid item xs={12} md={4}>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box>
+                  <Typography variant='body2' color='text.secondary' sx={{ mb: 0.5 }}>
+                    Total Inventory Value
+                  </Typography>
+                  <Typography variant='h3' sx={{ fontWeight: 700, color: 'info.main' }}>
+                    ${analytics.totalValue.toLocaleString()}
+                  </Typography>
+                </Box>
+                <Avatar
+                  variant='rounded'
                   sx={{
                     width: 48,
                     height: 48,
-                    borderRadius: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'warning.15'
+                    bgcolor: 'info.main',
+                    boxShadow: '0 4px 20px 0 rgba(0,0,0,0.14)'
                   }}
                 >
-                  <Icon icon='tabler-shopping-cart' style={{ fontSize: 24, color: 'warning.main' }} />
-                </Box>
-                <Box>
-                  <Typography variant='h4' sx={{ fontWeight: 700 }}>
-                    {totalSales}
-                  </Typography>
-                  <Typography variant='body2' color='text.secondary'>
-                    Total Sales
-                  </Typography>
-                </Box>
+                  <Icon icon='tabler-currency-dollar' fontSize={28} />
+                </Avatar>
               </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-        
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'info.15'
-                  }}
-                >
-                  <Icon icon='tabler-check-circle' style={{ fontSize: 24, color: 'info.main' }} />
-                </Box>
-                <Box>
-                  <Typography variant='h4' sx={{ fontWeight: 700 }}>
-                    {activeProducts}
-                  </Typography>
-                  <Typography variant='body2' color='text.secondary'>
-                    Active Products
-                  </Typography>
-                </Box>
+
+              <Box sx={{ mt: 3, p: 1.5, bgcolor: 'info.5', borderRadius: 1, display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                <Icon icon='tabler-chart-bar' fontSize={18} color='var(--mui-palette-info-main)' />
+                <Typography variant='body2' sx={{ fontWeight: 500 }}>
+                  Avg. Price: <strong>${analytics.avgPrice.toFixed(2)}</strong>
+                </Typography>
               </Box>
             </CardContent>
           </Card>
