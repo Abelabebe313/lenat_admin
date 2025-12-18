@@ -146,7 +146,7 @@ export const DELETE_BLOG_POST = gql`
 
 // Mutation to create a marketplace product
 export const CREATE_MARKETPLACE_PRODUCT = gql`
-  mutation CreateProduct($name: String!, $price: numeric!, $description: String, $is_active: Boolean, $is_featured: Boolean, $user_id: uuid!) {
+  mutation CreateProduct($name: String!, $price: numeric!, $description: String, $is_active: Boolean, $is_featured: Boolean, $user_id: uuid!, $categories: [marketplace_product_categories_insert_input!]!) {
     insert_marketplace_products_one(
       object: {
         name: $name
@@ -155,6 +155,9 @@ export const CREATE_MARKETPLACE_PRODUCT = gql`
         is_active: $is_active
         is_featured: $is_featured
         user_id: $user_id
+        product_categories: {
+          data: $categories
+        }
       }
     ) {
       id
@@ -164,6 +167,12 @@ export const CREATE_MARKETPLACE_PRODUCT = gql`
       is_active
       is_featured
       user_id
+      product_categories {
+        category_id
+        category {
+          name
+        }
+      }
     }
   }
 `

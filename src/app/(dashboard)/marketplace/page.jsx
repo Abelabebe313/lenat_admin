@@ -31,12 +31,20 @@ import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogActions from '@mui/material/DialogActions'
 import Snackbar from '@mui/material/Snackbar'
+import TextField from '@mui/material/TextField'
+import Select from '@mui/material/Select'
+import MenuItem from '@mui/material/MenuItem'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
+import InputAdornment from '@mui/material/InputAdornment'
+import TablePagination from '@mui/material/TablePagination'
+
 
 // Icon Imports
 import { Icon } from '@iconify/react'
 
 // GraphQL Imports
-import { GET_MARKETPLACE_PRODUCTS, GET_STORAGE_MARKETPLACE_PRODUCT_URL } from '@/lib/graphql/queries'
+import { GET_MARKETPLACE_PRODUCTS, GET_STORAGE_MARKETPLACE_PRODUCT_URL, GET_MARKETPLACE_CATEGORIES } from '@/lib/graphql/queries'
 import { CREATE_MARKETPLACE_PRODUCT, UPDATE_MARKETPLACE_PRODUCT, DELETE_MARKETPLACE_PRODUCT } from '@/lib/graphql/mutations'
 
 // Component Imports
@@ -61,8 +69,26 @@ const MarketplacePage = () => {
   // Snackbar state
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' })
 
+  // Search, filter, and pagination state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+
   // Fetch marketplace products from GraphQL
   const { data, loading, error, refetch } = useQuery(GET_MARKETPLACE_PRODUCTS)
+
+  // Fetch existing categories from DB
+  const { data: categoriesData } = useQuery(GET_MARKETPLACE_CATEGORIES)
+  const existingCategories = categoriesData?.marketplace_categories || []
+
+  // Static categories
+  const allCategories = [
+    { id: 'pregnancy_clothes', name: 'Pregnancy Clothes' },
+    { id: 'kids_clothes', name: 'Kids Clothes' },
+    { id: 'kids_toys', name: 'Kids Toys' },
+    { id: 'gifts', name: 'Gifts' }
+  ]
 
   // Mutation to create product
   const [createProduct] = useMutation(CREATE_MARKETPLACE_PRODUCT)
@@ -87,7 +113,7 @@ const MarketplacePage = () => {
   const [getStorageUrl] = useLazyQuery(GET_STORAGE_MARKETPLACE_PRODUCT_URL)
   
   // Transform the GraphQL data to match our UI needs
-  const products = data?.marketplace_products?.map(product => ({
+  const rawProducts = data?.marketplace_products?.map(product => ({
     id: product.id,
     name: product.name,
     price: product.price,
@@ -103,6 +129,19 @@ const MarketplacePage = () => {
     sales: Math.floor(Math.random() * 50), // Mock sales since API doesn't provide this
     revenue: product.price * Math.floor(Math.random() * 50) // Mock revenue
   })) || []
+
+  // Filter and Search Logic
+  const filteredProducts = rawProducts.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          product.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    
+    const matchesCategory = categoryFilter === 'all' || product.categories.includes(allCategories.find(c => c.id === categoryFilter)?.name)
+
+    return matchesSearch && matchesCategory
+  })
+
+  // Pagination Logic
+  const products = filteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -165,7 +204,30 @@ const MarketplacePage = () => {
             description: formData.description || null,
             is_active: formData.is_active,
             is_featured: formData.is_featured,
-            user_id: user?.id
+            user_id: user?.id,
+            categories: formData.categories?.map(categoryId => {
+              const categoryName = allCategories.find(c => c.id === categoryId)?.name || categoryId
+              
+              // Check if category already exists in DB
+              const existingCategory = existingCategories.find(c => c.name === categoryName)
+              
+              if (existingCategory) {
+                return {
+                  category_id: existingCategory.id
+                }
+              }
+
+              return {
+                category: {
+                  data: {
+                    name: categoryName,
+                    is_active: true,
+                    description: "",
+                    user_id: user?.id
+                  }
+                }
+              }
+            }) || []
           }
         })
 
@@ -550,9 +612,42 @@ const MarketplacePage = () => {
       {/* Products Table - Full Width */}
       <Card>
         <CardContent>
-          <Typography variant='h6' sx={{ mb: 3, fontWeight: 600 }}>
-            Products
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant='h6' sx={{ fontWeight: 600 }}>
+              Products
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                size='small'
+                placeholder='Search products...'
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position='start'>
+                      <Icon icon='tabler-search' />
+                    </InputAdornment>
+                  )
+                }}
+                sx={{ width: 250 }}
+              />
+              <FormControl size='small' sx={{ width: 200 }}>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={categoryFilter}
+                  label='Category'
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                >
+                  <MenuItem value='all'>All Categories</MenuItem>
+                  {allCategories.map((category) => (
+                    <MenuItem key={category.id} value={category.id}>
+                      {category.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          </Box>
           <TableContainer component={Paper} variant='outlined'>
             <Table>
               <TableHead>
@@ -665,6 +760,18 @@ const MarketplacePage = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component='div'
+            count={filteredProducts.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={(event, newPage) => setPage(newPage)}
+            onRowsPerPageChange={(event) => {
+              setRowsPerPage(parseInt(event.target.value, 10))
+              setPage(0)
+            }}
+          />
         </CardContent>
       </Card>
 

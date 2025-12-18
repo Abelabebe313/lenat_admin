@@ -23,13 +23,30 @@ import Chip from '@mui/material/Chip'
 // Icon Imports
 import { Icon } from '@iconify/react'
 
+// Apollo Client Imports
+import { useQuery } from '@apollo/client/react'
+
+// MUI Autocomplete Import
+import Autocomplete from '@mui/material/Autocomplete'
+
+const CATEGORIES = [
+  { id: 'pregnancy_clothes', name: 'Pregnancy Clothes' },
+  { id: 'kids_clothes', name: 'Kids Clothes' },
+  { id: 'kids_toys', name: 'Kids Toys' },
+  { id: 'gifts', name: 'Gifts' }
+]
+
 const ProductModal = ({ open, onClose, onSubmit, error, success, editMode = false, productData = null }) => {
+  // Use static categories
+  const categories = CATEGORIES
+
   const [formData, setFormData] = useState({
     name: productData?.name || '',
     price: productData?.price || '',
     description: productData?.description || '',
     is_active: productData?.is_active ?? true,
     is_featured: productData?.is_featured ?? false,
+    categories: productData?.categories || [],
     file: null
   })
 
@@ -49,6 +66,7 @@ const ProductModal = ({ open, onClose, onSubmit, error, success, editMode = fals
         description: productData.description || '',
         is_active: productData.is_active ?? true,
         is_featured: productData.is_featured ?? false,
+        categories: productData.categories || [],
         file: null
       })
     }
@@ -162,6 +180,7 @@ const ProductModal = ({ open, onClose, onSubmit, error, success, editMode = fals
           description: '',
           is_active: true,
           is_featured: false,
+          categories: [],
           file: null
         })
         if (fileInputRef.current) {
@@ -183,6 +202,7 @@ const ProductModal = ({ open, onClose, onSubmit, error, success, editMode = fals
         description: '',
         is_active: true,
         is_featured: false,
+        categories: [],
         file: null
       })
       setErrors({})
@@ -283,6 +303,48 @@ const ProductModal = ({ open, onClose, onSubmit, error, success, editMode = fals
                 </InputAdornment>
               ),
             }}
+          />
+
+          {/* Category Selection */}
+          <Autocomplete
+            multiple
+            options={categories}
+            getOptionLabel={(option) => option.name}
+            value={categories.filter(cat => formData.categories.includes(cat.id))}
+            onChange={(event, newValue) => {
+              setFormData(prev => ({
+                ...prev,
+                categories: newValue.map(cat => cat.id)
+              }))
+            }}
+            disabled={loading || success}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Categories"
+                placeholder="Select categories"
+                InputProps={{
+                  ...params.InputProps,
+                  startAdornment: (
+                    <>
+                      <InputAdornment position="start">
+                        <Icon icon='tabler-category' />
+                      </InputAdornment>
+                      {params.InputProps.startAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip
+                  label={option.name}
+                  {...getTagProps({ index })}
+                  size="small"
+                />
+              ))
+            }
           />
 
           {/* File Upload Area */}
