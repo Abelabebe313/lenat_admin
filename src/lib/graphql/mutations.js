@@ -472,3 +472,115 @@ export const DELETE_APPOINTMENT = gql`
     }
   }
 `
+
+// Mutation to insert a new user
+export const INSERT_USER = gql`
+  mutation InsertUser(
+    $id: uuid
+    $email: String
+    $phone_number: String
+    $password: String
+    $role: enum_role_enum
+    $full_name: String
+    $gender: String
+    $birth_date: date
+    $status: enum_generic_status_enum = Active
+  ) {
+    insert_users_one(
+      object: {
+        id: $id
+        email: $email
+        phone_number: $phone_number
+        password: $password
+        status: $status
+        auth_provider: System
+        roles: {
+          data: {
+            role: $role
+            status: $status
+          }
+        }
+      }
+    ) {
+      id
+    }
+    insert_profiles_one(
+      object: {
+        id: $id
+        full_name: $full_name
+        gender: $gender
+        birth_date: $birth_date
+      }
+    ) {
+      id
+    }
+  }
+
+`
+
+// Mutation to update a user
+export const UPDATE_USER = gql`
+  mutation UpdateUser(
+    $id: uuid!
+    $email: String
+    $phone_number: String
+    $full_name: String
+    $gender: String
+    $birth_date: date
+    $status: enum_generic_status_enum
+    $role: enum_role_enum
+  ) {
+    update_users_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        email: $email
+        phone_number: $phone_number
+        status: $status
+      }
+    ) {
+      id
+      email
+      phone_number
+    }
+    update_profiles(
+      where: { id: { _eq: $id } }
+      _set: {
+        full_name: $full_name
+        gender: $gender
+        birth_date: $birth_date
+      }
+    ) {
+      affected_rows
+    }
+    update_user_roles(
+      where: { user_id: { _eq: $id } }
+      _set: {
+        role: $role
+        status: $status
+      }
+    ) {
+      affected_rows
+    }
+  }
+`
+
+// Mutation to delete a user
+export const DELETE_USER = gql`
+  mutation DeleteUser($id: uuid!) {
+    delete_user_settings(where: {user_id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_user_topics(where: {user_id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_user_roles(where: {user_id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_profiles(where: {id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_users_by_pk(id: $id) {
+      id
+    }
+  }
+`

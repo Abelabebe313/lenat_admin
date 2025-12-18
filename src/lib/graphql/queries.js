@@ -22,10 +22,10 @@ export const GET_FEED_POSTS = gql`
   }
 `
 
-// Query to fetch users
+// Query to fetch users with pagination and filtering
 export const GET_USERS = gql`
-  query GetUsers {
-    users {
+  query GetUsers($limit: Int, $offset: Int, $where: users_bool_exp) {
+    users(limit: $limit, offset: $offset, where: $where, order_by: {created_at: desc}) {
       id
       email
       phone_number
@@ -39,6 +39,41 @@ export const GET_USERS = gql`
         birth_date
       }
       status
+      roles {
+        role
+      }
+      created_at
+    }
+    users_aggregate(where: $where) {
+      aggregate {
+        count
+      }
+    }
+  }
+`
+
+// Query to fetch user statistics
+export const GET_USER_STATS = gql`
+  query GetUserStats {
+    total: users_aggregate {
+      aggregate {
+        count
+      }
+    }
+    active: users_aggregate(where: {status: {_eq: Active}}) {
+      aggregate {
+        count
+      }
+    }
+    inactive: users_aggregate(where: {status: {_eq: Inactive}}) {
+      aggregate {
+        count
+      }
+    }
+    admins: users_aggregate(where: {roles: {role: {_eq: admin}}}) {
+      aggregate {
+        count
+      }
     }
   }
 `
