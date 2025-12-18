@@ -141,6 +141,13 @@ export const GET_MARKETPLACE_ORDERS = gql`
       state
       created_at
       updated_at
+      user {
+        id
+        email
+        profile {
+          full_name
+        }
+      }
     }
   }
 `

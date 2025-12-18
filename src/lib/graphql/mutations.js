@@ -213,3 +213,46 @@ export const DELETE_MARKETPLACE_PRODUCT = gql`
     }
   }
 `
+
+// Mutation to update marketplace order
+export const UPDATE_MARKETPLACE_ORDER = gql`
+  mutation UpdateMarketplaceOrder($id: uuid!, $state: enum_generic_state_enum!) {
+    update_marketplace_orders_by_pk(
+      pk_columns: { id: $id }
+      _set: { state: $state }
+    ) {
+      id
+      state
+      updated_at
+    }
+  }
+`
+
+// Mutation to delete marketplace order
+export const DELETE_MARKETPLACE_ORDER = gql`
+  mutation DeleteMarketplaceOrder($id: uuid!) {
+    delete_marketplace_order_items(where: {order_id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_marketplace_orders_by_pk(id: $id) {
+      id
+    }
+  }
+`
+
+// Mutation to create marketplace order
+export const CREATE_MARKETPLACE_ORDER = gql`
+  mutation CreateMarketplaceOrder($user_id: uuid!, $items: [marketplace_order_items_insert_input!]!) {
+    insert_marketplace_orders_one(object: {
+      user_id: $user_id,
+      state: Pending,
+      items: {
+        data: $items
+      }
+    }) {
+      id
+      state
+      created_at
+    }
+  }
+`
