@@ -36,19 +36,42 @@ export const REFRESH_TOKEN = gql`
 
 // Mutation to update trivia question
 export const UPDATE_TRIVIA_QUESTION = gql`
-  mutation UpdateTriviaQuestion($id: uuid!, $content: String!, $answer: String!, $options: jsonb!) {
+  mutation UpdateTriviaQuestion($id: uuid!, $content: String!, $answer: String!, $options: jsonb!, $explanation: String) {
     update_game_trivia_questions_by_pk(
       pk_columns: { id: $id }
       _set: { 
         content: $content
         answer: $answer
         options: $options
+        explanation: $explanation
       }
     ) {
       id
       content
       answer
       options
+      explanation
+    }
+  }
+`
+
+// Mutation to insert new trivia question
+export const INSERT_TRIVIA_QUESTION = gql`
+  mutation InsertTriviaQuestion($trivia_id: uuid!, $content: String!, $answer: String!, $options: jsonb!, $explanation: String) {
+    insert_game_trivia_questions_one(
+      object: {
+        trivia_id: $trivia_id
+        content: $content
+        answer: $answer
+        options: $options
+        explanation: $explanation
+      }
+    ) {
+      id
+      content
+      answer
+      options
+      explanation
     }
   }
 `
@@ -102,6 +125,28 @@ export const INSERT_TRIVIA = gql`
       description
       user_id
       created_at
+      updated_at
+    }
+  }
+`
+
+// Mutation to update trivia
+export const UPDATE_TRIVIA = gql`
+  mutation UpdateTrivia($id: uuid!, $name: String, $description: String, $index: Int, $state: enum_generic_state_enum) {
+    update_game_trivia_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        name: $name
+        description: $description
+        index: $index
+        state: $state
+      }
+    ) {
+      id
+      name
+      description
+      index
+      state
       updated_at
     }
   }
