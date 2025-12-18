@@ -171,3 +171,15 @@ export const GET_STORAGE_MARKETPLACE_PRODUCT_URL = gql`
     }
   }
 `
+
+// Query to fetch marketplace categories
+export const GET_MARKETPLACE_CATEGORIES = gql`
+  query GetMarketplaceCategories {
+    marketplace_categories {
+      id
+      name
+      description
+      is_active
+    }
+  }
+`
