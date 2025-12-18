@@ -256,3 +256,100 @@ export const CREATE_MARKETPLACE_ORDER = gql`
     }
   }
 `
+
+// Mutation to create appointment
+export const CREATE_APPOINTMENT = gql`
+  mutation CreateAppointment(
+    $user_id: uuid!
+    $doctor_id: uuid
+    $type: appointment_type
+    $scheduled_at: timestamptz
+    $description: String
+    $medical_condition: String
+    $surgery_history: String
+    $patient_notes: String
+    $state: enum_generic_state_enum
+    $payment_state: enum_generic_state_enum
+  ) {
+    insert_consultant_appointments_one(
+      object: {
+        user_id: $user_id
+        doctor_id: $doctor_id
+        type: $type
+        scheduled_at: $scheduled_at
+        description: $description
+        medical_condition: $medical_condition
+        surgery_history: $surgery_history
+        patient_notes: $patient_notes
+        state: $state
+        payment_state: $payment_state
+      }
+    ) {
+      id
+      user_id
+      doctor_id
+      type
+      scheduled_at
+      description
+      medical_condition
+      surgery_history
+      patient_notes
+      state
+      payment_state
+      created_at
+    }
+  }
+`
+
+// Mutation to update appointment
+export const UPDATE_APPOINTMENT = gql`
+  mutation UpdateAppointment(
+    $id: uuid!
+    $doctor_id: uuid
+    $type: appointment_type
+    $scheduled_at: timestamptz
+    $description: String
+    $medical_condition: String
+    $surgery_history: String
+    $patient_notes: String
+    $state: enum_generic_state_enum
+    $payment_state: enum_generic_state_enum
+  ) {
+    update_consultant_appointments_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        doctor_id: $doctor_id
+        type: $type
+        scheduled_at: $scheduled_at
+        description: $description
+        medical_condition: $medical_condition
+        surgery_history: $surgery_history
+        patient_notes: $patient_notes
+        state: $state
+        payment_state: $payment_state
+      }
+    ) {
+      id
+      user_id
+      doctor_id
+      type
+      scheduled_at
+      description
+      medical_condition
+      surgery_history
+      patient_notes
+      state
+      payment_state
+      updated_at
+    }
+  }
+`
+
+// Mutation to delete appointment
+export const DELETE_APPOINTMENT = gql`
+  mutation DeleteAppointment($id: uuid!) {
+    delete_consultant_appointments_by_pk(id: $id) {
+      id
+    }
+  }
+`
