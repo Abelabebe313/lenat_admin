@@ -238,12 +238,6 @@ const MarketplacePage = () => {
 
         console.log('Product created with ID:', productId)
 
-        // TODO: Image upload disabled until backend adds storage_product_upload query
-        // The backend needs to add a custom Hasura action/function for marketplace product uploads
-        // Similar to: storage_feed_upload and storage_blog_upload
-        // Once added, uncomment the code below and update the query name
-        
-        /*
         // If there's a file, upload it
         if (formData.file) {
           console.log('Step 2: Getting presigned URL for image upload...')
@@ -272,7 +266,9 @@ const MarketplacePage = () => {
             throw new Error('No data returned from storage URL query')
           }
 
-          const uploadUrl = storageResult.data?.storage_product_upload?.url
+          // Try different possible response structures
+          const uploadUrl = storageResult.data?.storage_feed_upload?.url || 
+                           storageResult.data?.storage_product_upload?.url
 
           if (!uploadUrl) {
             console.error('Response structure:', storageResult.data)
@@ -297,7 +293,6 @@ const MarketplacePage = () => {
 
           console.log('File uploaded successfully')
         }
-        */
 
         setSnackbar({ open: true, message: 'Product created successfully!', severity: 'success' })
       }
