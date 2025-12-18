@@ -53,9 +53,10 @@ const AppointmentModal = ({
   const { data: usersData } = useQuery(GET_USERS)
   const users = usersData?.users || []
 
-  // Appointment types (only CALL is available in backend)
+  // Appointment types (CALL and CHAT are available in backend)
   const appointmentTypes = [
-    { value: 'CALL', label: 'Call' }
+    { value: 'CALL', label: 'Call' },
+    { value: 'CHAT', label: 'Chat' }
   ]
 
   // State options

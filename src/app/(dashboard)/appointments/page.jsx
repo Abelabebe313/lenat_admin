@@ -169,6 +169,8 @@ const AppointmentsPage = () => {
     switch (type) {
       case 'CALL':
         return 'primary'
+      case 'CHAT':
+        return 'secondary'
       default:
         return 'default'
     }
@@ -560,6 +562,7 @@ const AppointmentsPage = () => {
                 >
                   <MenuItem value='all'>All Types</MenuItem>
                   <MenuItem value='CALL'>Call</MenuItem>
+                  <MenuItem value='CHAT'>Chat</MenuItem>
                 </Select>
               </FormControl>
             </Box>
