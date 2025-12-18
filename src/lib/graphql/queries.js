@@ -6,6 +6,7 @@ export const GET_FEED_POSTS = gql`
     feed_posts {
       id
       category
+      description
       media_id
       state
       media {

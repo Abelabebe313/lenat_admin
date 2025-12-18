@@ -170,6 +170,26 @@ export const DELETE_FEED_POST = gql`
   }
 `
 
+// Mutation to update a feed post
+export const UPDATE_FEED_POST = gql`
+  mutation UpdateFeedPost($id: uuid!, $description: String, $category: enum_feed_type_enum, $state: enum_generic_state_enum) {
+    update_feed_posts_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        description: $description
+        category: $category
+        state: $state
+      }
+    ) {
+      id
+      description
+      category
+      state
+      updated_at
+    }
+  }
+`
+
 // Mutation to create a blog post
 export const CREATE_ONE_BLOG_POST = gql`
   mutation CreateOneBlogPost(

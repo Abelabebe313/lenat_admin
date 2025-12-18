@@ -25,12 +25,12 @@ import Chip from '@mui/material/Chip'
 // Icon Imports
 import { Icon } from '@iconify/react'
 
-const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, success: externalSuccess }) => {
+const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, success: externalSuccess, editMode = false, editingFeed = null }) => {
   // Form states
   const [formData, setFormData] = useState({
-    title: '',
     description: '',
     category: '',
+    state: 'Accepted',
     file: null
   })
   const [errors, setErrors] = useState({})
@@ -51,6 +51,28 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
     'Child_Growth',
     'Fatherhood'
   ]
+
+  const statuses = ['Accepted', 'Pending', 'Rejected']
+
+  // Populate form when editing
+  // Populate form when editing
+  useEffect(() => {
+    if (editMode && editingFeed) {
+      setFormData({
+        description: editingFeed.description || '',
+        category: editingFeed.category || '',
+        state: editingFeed.status || 'Accepted',
+        file: null
+      })
+    } else {
+      setFormData({
+        description: '',
+        category: '',
+        state: 'Accepted',
+        file: null
+      })
+    }
+  }, [editMode, editingFeed])
 
   // Format category names for display
   const formatCategoryName = (category) => {
@@ -163,7 +185,8 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
       newErrors.category = 'Category is required'
     }
 
-    if (!formData.file) {
+    // File is required only when creating new feed
+    if (!editMode && !formData.file) {
       newErrors.file = 'Please select a file to upload'
     }
 
@@ -198,10 +221,12 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
     try {
       // Create FormData for file upload
       const uploadData = new FormData()
-      uploadData.append('title', formData.title)
       uploadData.append('description', formData.description)
       uploadData.append('category', formData.category)
-      uploadData.append('file', formData.file)
+      uploadData.append('state', formData.state)
+      if (formData.file) {
+        uploadData.append('file', formData.file)
+      }
 
       // Call the onSubmit prop with the form data
       await onSubmit(uploadData)
@@ -224,9 +249,9 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
     // Only reset if not closing due to success
     if (!externalSuccess) {
     setFormData({
-      title: '',
       description: '',
       category: '',
+      state: 'Accepted',
       file: null
     })
     setErrors({})
@@ -253,7 +278,7 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Icon icon='tabler-upload' style={{ fontSize: 24 }} />
           <Box component="span" sx={{ fontWeight: 600 }}>
-            Upload New Feed
+            {editMode ? 'Edit Feed' : 'Upload New Feed'}
           </Box>
         </Box>
       </DialogTitle>
@@ -272,23 +297,12 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
             </Alert>
           )}
 
-          {/* Title Field - Optional, for UI purposes only */}
-          <TextField
-            fullWidth
-            label='Feed Title (Optional)'
-            placeholder='Enter feed title'
-            value={formData.title}
-            onChange={handleInputChange('title')}
-            error={!!errors.title}
-            helperText={errors.title}
-            sx={{ mb: 3 }}
-          />
 
           {/* Description Field */}
           <TextField
             fullWidth
             label='Description'
-            placeholder='Enter feed description (optional)'
+            placeholder='Enter feed description'
             value={formData.description}
             onChange={handleInputChange('description')}
             multiline
@@ -318,11 +332,50 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
             )}
           </FormControl>
 
+          {/* State Selector */}
+          <FormControl fullWidth sx={{ mb: 3 }} error={!!errors.state}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={formData.state}
+              label='Status'
+              onChange={handleInputChange('state')}
+            >
+              {statuses.map((status) => (
+                <MenuItem key={status} value={status}>
+                  {status}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
           {/* File Upload Area */}
           <Box sx={{ mb: 3 }}>
             <Typography variant='subtitle2' sx={{ mb: 2, fontWeight: 600 }}>
-              Upload Image
+              {editMode ? 'Upload New Image (Optional)' : 'Upload Image'}
             </Typography>
+            
+            {/* Show current image in edit mode */}
+            {editMode && editingFeed?.media?.url && !formData.file && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant='caption' color='text.secondary' sx={{ mb: 1, display: 'block' }}>
+                  Current Image:
+                </Typography>
+                <Box
+                  component="img"
+                  src={editingFeed.media.url}
+                  alt={editingFeed.name}
+                  sx={{
+                    width: '100%',
+                    maxHeight: 200,
+                    objectFit: 'contain',
+                    borderRadius: 1,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    mb: 2
+                  }}
+                />
+              </Box>
+            )}
             
             <Paper
               variant='outlined'
@@ -377,7 +430,7 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
                 <Box>
                   <Icon icon='tabler-cloud-upload' style={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
                   <Typography variant='body2' sx={{ fontWeight: 500, mb: 1 }}>
-                    {dragActive ? 'Drop your image here' : 'Click to upload or drag and drop'}
+                    {dragActive ? 'Drop your image here' : (editMode ? 'Click to upload a new image' : 'Click to upload or drag and drop')}
                   </Typography>
                   <Typography variant='caption' color='text.secondary'>
                     PNG, JPG, GIF, WebP up to 10MB
@@ -406,9 +459,9 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
             type='submit' 
             variant='contained'
             disabled={loading}
-            startIcon={loading ? <CircularProgress size={16} /> : <Icon icon='tabler-upload' />}
+            startIcon={loading ? <CircularProgress size={16} /> : <Icon icon={editMode ? 'tabler-check' : 'tabler-upload'} />}
           >
-            {loading ? 'Uploading...' : 'Upload Feed'}
+            {loading ? (editMode ? 'Updating...' : 'Uploading...') : (editMode ? 'Update Feed' : 'Upload Feed')}
           </Button>
         </DialogActions>
       </form>
