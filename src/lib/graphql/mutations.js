@@ -127,10 +127,64 @@ export const DELETE_FEED_POST = gql`
 
 // Mutation to create a blog post
 export const CREATE_ONE_BLOG_POST = gql`
-  mutation CreateOneBlogPost($user_id: uuid!, $state: enum_generic_state_enum = Accepted, $title: String, $content: String, $type: enum_blog_type_enum) {
-    insert_blog_posts_one(object: {user_id: $user_id, state: $state, title: $title, content: $content, type: $type}) {
+  mutation CreateOneBlogPost(
+    $user_id: uuid!
+    $state: enum_generic_state_enum = Accepted
+    $title: String
+    $content: String
+    $type: enum_blog_type_enum
+    $is_premium: Boolean
+    $status: enum_generic_status_enum
+  ) {
+    insert_blog_posts_one(
+      object: {
+        user_id: $user_id
+        state: $state
+        title: $title
+        content: $content
+        type: $type
+        is_premium: $is_premium
+        status: $status
+      }
+    ) {
       id
       status
+      state
+      is_premium
+    }
+  }
+`
+
+// Mutation to update a blog post
+export const UPDATE_BLOG_POST = gql`
+  mutation UpdateBlogPost(
+    $id: uuid!
+    $title: String
+    $content: String
+    $type: enum_blog_type_enum
+    $is_premium: Boolean
+    $status: enum_generic_status_enum
+    $state: enum_generic_state_enum
+  ) {
+    update_blog_posts_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        title: $title
+        content: $content
+        type: $type
+        is_premium: $is_premium
+        status: $status
+        state: $state
+      }
+    ) {
+      id
+      title
+      content
+      type
+      is_premium
+      status
+      state
+      updated_at
     }
   }
 `

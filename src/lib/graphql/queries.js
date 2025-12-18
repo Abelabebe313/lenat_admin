@@ -45,19 +45,41 @@ export const GET_USERS = gql`
 // Query to fetch blog posts
 export const GET_BLOG_POSTS = gql`
   query GetBlogPosts {
-    blog_posts {
+    blog_posts(order_by: {created_at: desc}) {
       id
+      user_id
+      updated_at
+      type
+      title
+      status
+      state
+      media_id
+      is_premium
+      is_liked
+      is_bookmarked
+      content
+      created_at
       media {
         blur_hash
         file_name
         id
         url
       }
-      state
-      status
-      title
-      type
-      updated_at
+      likes_aggregate {
+        aggregate {
+          count
+        }
+      }
+      comments_aggregate {
+        aggregate {
+          count
+        }
+      }
+      bookmarks_aggregate {
+        aggregate {
+          count
+        }
+      }
     }
   }
 `
@@ -187,6 +209,51 @@ export const GET_MARKETPLACE_CATEGORIES = gql`
       name
       description
       is_active
+    }
+  }
+`
+
+// Query to fetch consultant appointments
+export const GET_APPOINTMENTS = gql`
+  query GetAppointments {
+    consultant_appointments {
+      id
+      user_id
+      updated_at
+      type
+      surgery_history
+      state
+      scheduled_at
+      doctor_id
+      medical_condition
+      patient_notes
+      payment_state
+      created_at
+      description
+      doctor {
+        email
+        id
+        phone_number
+        status
+      }
+      user {
+        phone_number
+        email
+        id
+        profile {
+          full_name
+          gender
+          media {
+            url
+          }
+        }
+        roles {
+          role
+        }
+      }
+      room {
+        id
+      }
     }
   }
 `
