@@ -307,3 +307,122 @@ export const GET_APPOINTMENTS = gql`
     }
   }
 `
+
+// Query to fetch dashboard statistics
+export const GET_DASHBOARD_STATS = gql`
+  query GetDashboardStats {
+    blog_posts_aggregate {
+      aggregate {
+        count
+      }
+    }
+    consultant_appointments_aggregate {
+      aggregate {
+        count
+      }
+    }
+    consultant_rooms_aggregate {
+      aggregate {
+        count
+      }
+    }
+    feed_bookmarks_aggregate {
+      aggregate {
+        count
+      }
+    }
+    feed_likes_aggregate {
+      aggregate {
+        count
+      }
+    }
+    game_trivia_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_order_items_aggregate {
+      aggregate {
+        count
+      }
+    }
+    user_roles_aggregate {
+      aggregate {
+        count
+      }
+    }
+    users_aggregate {
+      aggregate {
+        count
+      }
+    }
+    profile_patients_aggregate {
+      aggregate {
+        count
+      }
+    }
+    other_subscriptions_aggregate {
+      aggregate {
+        count
+      }
+    }
+    profile_doctors_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_products_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_product_categories_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_orders_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_categories_aggregate {
+      aggregate {
+        count
+      }
+    }
+    game_trivia_questions_aggregate {
+      aggregate {
+        count
+      }
+    }
+    feed_posts_aggregate {
+      aggregate {
+        count
+      }
+    }
+    enum_feed_type_aggregate {
+      aggregate {
+        count
+      }
+    }
+    enum_blog_type_aggregate {
+      aggregate {
+        count
+      }
+    }
+    blog_bookmarks_aggregate {
+      aggregate {
+        count
+      }
+    }
+    audit_logs {
+      session_user_name
+    }
+    ai_models_aggregate {
+      aggregate {
+        count
+      }
+    }
+  }
+`
