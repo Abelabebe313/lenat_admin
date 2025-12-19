@@ -339,6 +339,7 @@ const ProductModal = ({ open, onClose, onSubmit, error, success, editMode = fals
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
                 <Chip
+                  key={option.id}
                   label={option.name}
                   {...getTagProps({ index })}
                   size="small"
