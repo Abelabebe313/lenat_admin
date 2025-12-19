@@ -41,7 +41,7 @@ import { Icon } from '@iconify/react'
 // GraphQL Imports
 import { useQuery, useMutation, useLazyQuery } from '@apollo/client/react'
 import { GET_FEED_POSTS, GET_STORAGE_FEED_POST_URL } from '@lib/graphql/queries'
-import { CREATE_ONE_POST_FEED, DELETE_FEED_POST } from '@lib/graphql/mutations'
+import { CREATE_ONE_POST_FEED, DELETE_FEED_POST, UPDATE_FEED_POST } from '@lib/graphql/mutations'
 
 // Component Imports
 import FeedUploadModal from '@components/feeds/FeedUploadModal'
@@ -62,6 +62,8 @@ const FeedsPage = () => {
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [uploadError, setUploadError] = useState(null)
   const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editingFeed, setEditingFeed] = useState(null)
 
   // Delete dialog state
   const [deleteDialog, setDeleteDialog] = useState({ open: false, feedId: null, feedName: '' })
@@ -91,6 +93,20 @@ const FeedsPage = () => {
     }
   })
 
+  // Mutation to update feed post
+  const [updateFeedPost, { loading: updating }] = useMutation(UPDATE_FEED_POST, {
+    onCompleted: () => {
+      setSnackbar({ open: true, message: 'Feed post updated successfully!', severity: 'success' })
+      setUploadModalOpen(false)
+      setEditMode(false)
+      setEditingFeed(null)
+      refetch()
+    },
+    onError: (error) => {
+      setSnackbar({ open: true, message: `Error updating feed post: ${error.message}`, severity: 'error' })
+    }
+  })
+
   // Lazy query to get presigned URL
   const [getStorageUrl] = useLazyQuery(GET_STORAGE_FEED_POST_URL)
 
@@ -114,7 +130,8 @@ const FeedsPage = () => {
     
     return data.feed_posts.map(post => ({
       id: post.id,
-      name: post.media?.file_name || `Feed ${post.id.slice(0, 8)}`,
+      name: post.description || post.media?.file_name || `Feed ${post.id.slice(0, 8)}`,
+      description: post.description,
       category: post.category,
       status: post.state,
       lastUpdate: new Date(post.updated_at).toLocaleString(),
@@ -211,22 +228,113 @@ const FeedsPage = () => {
     }
   }
 
+  // Handle edit feed
+  const handleEditFeed = (feed) => {
+    setEditingFeed(feed)
+    setEditMode(true)
+    setUploadModalOpen(true)
+  }
+
   // Handle feed upload
   const handleFeedUpload = async (formData) => {
     setUploadError(null)
     setUploadSuccess(false)
     
     try {
+      console.log("i'm now running")
       // Get form values
       const description = formData.get('description') || ''
       const category = formData.get('category')
       const file = formData.get('file')
+      const state = formData.get('state') || 'Accepted'
       
       // Validate required fields
       if (!category) {
         throw new Error('Category is required')
       }
-      
+
+      // If in edit mode, update the existing feed
+      if (editMode && editingFeed) {
+        console.log('Updating feed post:', editingFeed.id)
+        
+        // Update feed post metadata
+        await updateFeedPost({
+          variables: {
+            id: editingFeed.id,
+            description: description,
+            category: category,
+            state: state
+          }
+        })
+
+        // If a new file is provided, upload it
+        if (file) {
+          console.log('Uploading new file for existing feed...')
+          
+          const fileName = file.name
+          const storageResult = await getStorageUrl({
+            variables: {
+              file_name: fileName,
+              object_id: editingFeed.id
+            }
+          })
+
+          // Check for errors
+          if (storageResult.errors && storageResult.errors.length > 0) {
+            const errorMessages = storageResult.errors.map(e => e.message).join(', ')
+            throw new Error(`GraphQL error: ${errorMessages}`)
+          }
+          
+          if (storageResult.error) {
+            throw new Error(`GraphQL error: ${storageResult.error.message}`)
+          }
+
+          if (!storageResult.data) {
+            throw new Error('No data returned from storage URL query')
+          }
+
+          const uploadUrl = storageResult.data?.storage_feed_upload?.url || 
+                           storageResult.data?.storage_feed_upload_url?.url ||
+                           storageResult.data?.url
+
+          if (!uploadUrl) {
+            throw new Error(`Failed to get upload URL. Response structure: ${JSON.stringify(storageResult.data)}`)
+          }
+
+          // Upload file to presigned URL
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            body: file,
+            headers: {
+              'Content-Type': file.type
+            }
+          })
+
+          if (!uploadResponse.ok) {
+            throw new Error(`File upload failed: ${uploadResponse.statusText}`)
+          }
+
+          console.log('File uploaded successfully')
+        }
+
+        // Refresh feed list
+        await refetch()
+        
+        // Show success message
+        setUploadSuccess(true)
+        
+        // Close modal after a short delay
+        setTimeout(() => {
+          setUploadModalOpen(false)
+          setUploadSuccess(false)
+          setEditMode(false)
+          setEditingFeed(null)
+        }, 1500)
+
+        return
+      }
+
+      // Create new feed post flow
       if (!file) {
         throw new Error('File is required')
       }
@@ -242,7 +350,8 @@ const FeedsPage = () => {
         variables: {
           description: description,
           user_id: user.id,
-          category: category
+          category: category,
+          state: state
         }
       })
 
@@ -372,10 +481,14 @@ const FeedsPage = () => {
             setUploadModalOpen(false)
             setUploadError(null)
             setUploadSuccess(false)
+            setEditMode(false)
+            setEditingFeed(null)
           }}
           onSubmit={handleFeedUpload}
           error={uploadError}
           success={uploadSuccess}
+          editMode={editMode}
+          editingFeed={editingFeed}
         />
       </Box>
     )
@@ -414,10 +527,14 @@ const FeedsPage = () => {
             setUploadModalOpen(false)
             setUploadError(null)
             setUploadSuccess(false)
+            setEditMode(false)
+            setEditingFeed(null)
           }}
           onSubmit={handleFeedUpload}
           error={uploadError}
           success={uploadSuccess}
+          editMode={editMode}
+          editingFeed={editingFeed}
         />
       </Box>
     )
@@ -709,11 +826,13 @@ const FeedsPage = () => {
                           <TableCell>
                             <Box>
                               <Typography variant='body2' sx={{ fontWeight: 500 }}>
-                                {feed.name}
+                                {feed.description || feed.media?.file_name || `Feed ${feed.id.slice(0, 8)}`}
                               </Typography>
-                              <Typography variant='caption' color='text.secondary'>
-                                {feed.media?.file_name || 'No file name'}
-                              </Typography>
+                              {feed.description && feed.media?.file_name && (
+                                <Typography variant='caption' color='text.secondary'>
+                                  {feed.media.file_name}
+                                </Typography>
+                              )}
                             </Box>
                           </TableCell>
                           <TableCell>
@@ -736,6 +855,14 @@ const FeedsPage = () => {
                             </Typography>
                           </TableCell>
                           <TableCell>
+                            <IconButton 
+                              size='small' 
+                              color='primary'
+                              onClick={() => handleEditFeed(feed)}
+                              sx={{ mr: 1 }}
+                            >
+                              <Icon icon='tabler-edit' />
+                            </IconButton>
                             <IconButton 
                               size='small' 
                               color='error'
@@ -775,10 +902,14 @@ const FeedsPage = () => {
           setUploadModalOpen(false)
           setUploadError(null)
           setUploadSuccess(false)
+          setEditMode(false)
+          setEditingFeed(null)
         }}
         onSubmit={handleFeedUpload}
         error={uploadError}
         success={uploadSuccess}
+        editMode={editMode}
+        editingFeed={editingFeed}
       />
 
       {/* Delete Confirmation Dialog */}
@@ -877,11 +1008,11 @@ const FeedsPage = () => {
       </Snackbar>
       
       {/* Debug info */}
-      {process.env.NODE_ENV === 'development' && (
+      {/* {process.env.NODE_ENV === 'development' && (
         <Box sx={{ position: 'fixed', top: 10, right: 10, bg: 'black', color: 'white', p: 1, zIndex: 9999 }}>
           Modal: {uploadModalOpen ? 'OPEN' : 'CLOSED'} | Loading: {loading ? 'YES' : 'NO'} | Error: {error ? 'YES' : 'NO'}
         </Box>
-      )}
+      )} */}
     </Box>
   )
 }

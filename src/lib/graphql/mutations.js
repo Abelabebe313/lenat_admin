@@ -36,19 +36,42 @@ export const REFRESH_TOKEN = gql`
 
 // Mutation to update trivia question
 export const UPDATE_TRIVIA_QUESTION = gql`
-  mutation UpdateTriviaQuestion($id: uuid!, $content: String!, $answer: String!, $options: jsonb!) {
+  mutation UpdateTriviaQuestion($id: uuid!, $content: String!, $answer: String!, $options: jsonb!, $explanation: String) {
     update_game_trivia_questions_by_pk(
       pk_columns: { id: $id }
       _set: { 
         content: $content
         answer: $answer
         options: $options
+        explanation: $explanation
       }
     ) {
       id
       content
       answer
       options
+      explanation
+    }
+  }
+`
+
+// Mutation to insert new trivia question
+export const INSERT_TRIVIA_QUESTION = gql`
+  mutation InsertTriviaQuestion($trivia_id: uuid!, $content: String!, $answer: String!, $options: jsonb!, $explanation: String) {
+    insert_game_trivia_questions_one(
+      object: {
+        trivia_id: $trivia_id
+        content: $content
+        answer: $answer
+        options: $options
+        explanation: $explanation
+      }
+    ) {
+      id
+      content
+      answer
+      options
+      explanation
     }
   }
 `
@@ -107,6 +130,28 @@ export const INSERT_TRIVIA = gql`
   }
 `
 
+// Mutation to update trivia
+export const UPDATE_TRIVIA = gql`
+  mutation UpdateTrivia($id: uuid!, $name: String, $description: String, $index: Int, $state: enum_generic_state_enum) {
+    update_game_trivia_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        name: $name
+        description: $description
+        index: $index
+        state: $state
+      }
+    ) {
+      id
+      name
+      description
+      index
+      state
+      updated_at
+    }
+  }
+`
+
 // Mutation to create a feed post
 export const CREATE_ONE_POST_FEED = gql`
   mutation CreateOnePostFeed($description: String, $user_id: uuid!, $category: enum_feed_type_enum, $state: enum_generic_state_enum = Accepted) {
@@ -125,12 +170,86 @@ export const DELETE_FEED_POST = gql`
   }
 `
 
+// Mutation to update a feed post
+export const UPDATE_FEED_POST = gql`
+  mutation UpdateFeedPost($id: uuid!, $description: String, $category: enum_feed_type_enum, $state: enum_generic_state_enum) {
+    update_feed_posts_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        description: $description
+        category: $category
+        state: $state
+      }
+    ) {
+      id
+      description
+      category
+      state
+      updated_at
+    }
+  }
+`
+
 // Mutation to create a blog post
 export const CREATE_ONE_BLOG_POST = gql`
-  mutation CreateOneBlogPost($user_id: uuid!, $state: enum_generic_state_enum = Accepted, $title: String, $content: String, $type: enum_blog_type_enum) {
-    insert_blog_posts_one(object: {user_id: $user_id, state: $state, title: $title, content: $content, type: $type}) {
+  mutation CreateOneBlogPost(
+    $user_id: uuid!
+    $state: enum_generic_state_enum = Accepted
+    $title: String
+    $content: String
+    $type: enum_blog_type_enum
+    $is_premium: Boolean
+    $status: enum_generic_status_enum
+  ) {
+    insert_blog_posts_one(
+      object: {
+        user_id: $user_id
+        state: $state
+        title: $title
+        content: $content
+        type: $type
+        is_premium: $is_premium
+        status: $status
+      }
+    ) {
       id
       status
+      state
+      is_premium
+    }
+  }
+`
+
+// Mutation to update a blog post
+export const UPDATE_BLOG_POST = gql`
+  mutation UpdateBlogPost(
+    $id: uuid!
+    $title: String
+    $content: String
+    $type: enum_blog_type_enum
+    $is_premium: Boolean
+    $status: enum_generic_status_enum
+    $state: enum_generic_state_enum
+  ) {
+    update_blog_posts_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        title: $title
+        content: $content
+        type: $type
+        is_premium: $is_premium
+        status: $status
+        state: $state
+      }
+    ) {
+      id
+      title
+      content
+      type
+      is_premium
+      status
+      state
+      updated_at
     }
   }
 `
@@ -139,6 +258,328 @@ export const CREATE_ONE_BLOG_POST = gql`
 export const DELETE_BLOG_POST = gql`
   mutation DeleteBlogPost($id: uuid!) {
     delete_blog_posts_by_pk(id: $id) {
+      id
+    }
+  }
+`
+
+// Mutation to create a marketplace product
+export const CREATE_MARKETPLACE_PRODUCT = gql`
+  mutation CreateProduct($name: String!, $price: numeric!, $description: String, $is_active: Boolean, $is_featured: Boolean, $user_id: uuid!, $categories: [marketplace_product_categories_insert_input!]!) {
+    insert_marketplace_products_one(
+      object: {
+        name: $name
+        price: $price
+        description: $description
+        is_active: $is_active
+        is_featured: $is_featured
+        user_id: $user_id
+        product_categories: {
+          data: $categories
+        }
+      }
+    ) {
+      id
+      name
+      price
+      description
+      is_active
+      is_featured
+      user_id
+      product_categories {
+        category_id
+        category {
+          name
+        }
+      }
+    }
+  }
+`
+
+// Mutation to update a marketplace product
+export const UPDATE_MARKETPLACE_PRODUCT = gql`
+  mutation UpdateProduct($id: uuid!, $name: String, $price: numeric, $description: String, $is_active: Boolean, $is_featured: Boolean) {
+    update_marketplace_products_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        name: $name
+        price: $price
+        description: $description
+        is_active: $is_active
+        is_featured: $is_featured
+      }
+    ) {
+      id
+      name
+      price
+      description
+      is_active
+      is_featured
+    }
+  }
+`
+
+// Mutation to delete a marketplace product
+export const DELETE_MARKETPLACE_PRODUCT = gql`
+  mutation DeleteProduct($id: uuid!) {
+    # First delete related product categories
+    delete_marketplace_product_categories(where: {product_id: {_eq: $id}}) {
+      affected_rows
+    }
+    # Then delete the product
+    delete_marketplace_products_by_pk(id: $id) {
+      id
+    }
+  }
+`
+
+// Mutation to update marketplace order
+export const UPDATE_MARKETPLACE_ORDER = gql`
+  mutation UpdateMarketplaceOrder($id: uuid!, $state: enum_generic_state_enum!) {
+    update_marketplace_orders_by_pk(
+      pk_columns: { id: $id }
+      _set: { state: $state }
+    ) {
+      id
+      state
+      updated_at
+    }
+  }
+`
+
+// Mutation to delete marketplace order
+export const DELETE_MARKETPLACE_ORDER = gql`
+  mutation DeleteMarketplaceOrder($id: uuid!) {
+    delete_marketplace_order_items(where: {order_id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_marketplace_orders_by_pk(id: $id) {
+      id
+    }
+  }
+`
+
+// Mutation to create marketplace order
+export const CREATE_MARKETPLACE_ORDER = gql`
+  mutation CreateMarketplaceOrder($user_id: uuid!, $items: [marketplace_order_items_insert_input!]!) {
+    insert_marketplace_orders_one(object: {
+      user_id: $user_id,
+      state: Pending,
+      items: {
+        data: $items
+      }
+    }) {
+      id
+      state
+      created_at
+    }
+  }
+`
+
+// Mutation to create appointment
+export const CREATE_APPOINTMENT = gql`
+  mutation CreateAppointment(
+    $user_id: uuid!
+    $doctor_id: uuid
+    $type: appointment_type
+    $scheduled_at: timestamptz
+    $description: String
+    $medical_condition: String
+    $surgery_history: String
+    $patient_notes: String
+    $state: enum_generic_state_enum
+    $payment_state: enum_generic_state_enum
+  ) {
+    insert_consultant_appointments_one(
+      object: {
+        user_id: $user_id
+        doctor_id: $doctor_id
+        type: $type
+        scheduled_at: $scheduled_at
+        description: $description
+        medical_condition: $medical_condition
+        surgery_history: $surgery_history
+        patient_notes: $patient_notes
+        state: $state
+        payment_state: $payment_state
+      }
+    ) {
+      id
+      user_id
+      doctor_id
+      type
+      scheduled_at
+      description
+      medical_condition
+      surgery_history
+      patient_notes
+      state
+      payment_state
+      created_at
+    }
+  }
+`
+
+// Mutation to update appointment
+export const UPDATE_APPOINTMENT = gql`
+  mutation UpdateAppointment(
+    $id: uuid!
+    $doctor_id: uuid
+    $type: appointment_type
+    $scheduled_at: timestamptz
+    $description: String
+    $medical_condition: String
+    $surgery_history: String
+    $patient_notes: String
+    $state: enum_generic_state_enum
+    $payment_state: enum_generic_state_enum
+  ) {
+    update_consultant_appointments_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        doctor_id: $doctor_id
+        type: $type
+        scheduled_at: $scheduled_at
+        description: $description
+        medical_condition: $medical_condition
+        surgery_history: $surgery_history
+        patient_notes: $patient_notes
+        state: $state
+        payment_state: $payment_state
+      }
+    ) {
+      id
+      user_id
+      doctor_id
+      type
+      scheduled_at
+      description
+      medical_condition
+      surgery_history
+      patient_notes
+      state
+      payment_state
+      updated_at
+    }
+  }
+`
+
+// Mutation to delete appointment
+export const DELETE_APPOINTMENT = gql`
+  mutation DeleteAppointment($id: uuid!) {
+    delete_consultant_appointments_by_pk(id: $id) {
+      id
+    }
+  }
+`
+
+// Mutation to insert a new user
+export const INSERT_USER = gql`
+  mutation InsertUser(
+    $id: uuid
+    $email: String
+    $phone_number: String
+    $password: String
+    $role: enum_role_enum
+    $full_name: String
+    $gender: String
+    $birth_date: date
+    $status: enum_generic_status_enum = Active
+  ) {
+    insert_users_one(
+      object: {
+        id: $id
+        email: $email
+        phone_number: $phone_number
+        password: $password
+        status: $status
+        auth_provider: System
+        roles: {
+          data: {
+            role: $role
+            status: $status
+          }
+        }
+      }
+    ) {
+      id
+    }
+    insert_profiles_one(
+      object: {
+        id: $id
+        full_name: $full_name
+        gender: $gender
+        birth_date: $birth_date
+      }
+    ) {
+      id
+    }
+  }
+
+`
+
+// Mutation to update a user
+export const UPDATE_USER = gql`
+  mutation UpdateUser(
+    $id: uuid!
+    $email: String
+    $phone_number: String
+    $full_name: String
+    $gender: String
+    $birth_date: date
+    $status: enum_generic_status_enum
+    $role: enum_role_enum
+  ) {
+    update_users_by_pk(
+      pk_columns: { id: $id }
+      _set: {
+        email: $email
+        phone_number: $phone_number
+        status: $status
+      }
+    ) {
+      id
+      email
+      phone_number
+    }
+    update_profiles(
+      where: { id: { _eq: $id } }
+      _set: {
+        full_name: $full_name
+        gender: $gender
+        birth_date: $birth_date
+      }
+    ) {
+      affected_rows
+    }
+    update_user_roles(
+      where: { user_id: { _eq: $id } }
+      _set: {
+        role: $role
+        status: $status
+      }
+    ) {
+      affected_rows
+    }
+  }
+`
+
+// Mutation to delete a user
+export const DELETE_USER = gql`
+  mutation DeleteUser($id: uuid!) {
+    delete_user_settings(where: {user_id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_user_topics(where: {user_id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_user_roles(where: {user_id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_profiles(where: {id: {_eq: $id}}) {
+      affected_rows
+    }
+    delete_users_by_pk(id: $id) {
       id
     }
   }

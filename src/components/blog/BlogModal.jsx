@@ -19,18 +19,30 @@ import Typography from '@mui/material/Typography'
 import Alert from '@mui/material/Alert'
 import CircularProgress from '@mui/material/CircularProgress'
 import Paper from '@mui/material/Paper'
-import IconButton from '@mui/material/IconButton'
 import Chip from '@mui/material/Chip'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Switch from '@mui/material/Switch'
 
 // Icon Imports
 import { Icon } from '@iconify/react'
 
-const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, success: externalSuccess, editMode = false, editingFeed = null }) => {
+const BlogModal = ({ 
+  open, 
+  onClose, 
+  onSubmit, 
+  error: externalError, 
+  success: externalSuccess,
+  editMode = false,
+  initialData = null
+}) => {
   // Form states
   const [formData, setFormData] = useState({
-    description: '',
-    category: '',
-    state: 'Accepted',
+    title: '',
+    content: '',
+    type: '',
+    status: 'Active',
+    state: 'Pending',
+    is_premium: false,
     file: null
   })
   const [errors, setErrors] = useState({})
@@ -40,44 +52,38 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
   // File input ref
   const fileInputRef = useRef(null)
 
-  // Available categories (same as in feeds page)
-  const categories = [
-    'Prenatal_Stage',
-    'First_Trimester', 
-    'Second_Trimester',
-    'Third_Trimester',
-    'Labor_and_Delivery',
-    'Postpartum',
-    'Child_Growth',
-    'Fatherhood'
+  // Available options
+  const blogTypes = ['Baby', 'First', 'Parental_Care', 'Second', 'Third']
+  const statusOptions = ['Active', 'Inactive', 'Deleted']
+  const stateOptions = [
+    'Accepted', 'Available', 'Canceled', 'Done', 
+    'InProgress', 'Out_Of_Stock', 'Paid', 'Pending', 'Rejected', 'UnPaid', 'Unavailable'
   ]
 
-  const statuses = ['Accepted', 'Pending', 'Rejected']
-
-  // Populate form when editing
-  // Populate form when editing
+  // Initialize form with edit data
   useEffect(() => {
-    if (editMode && editingFeed) {
+    if (editMode && initialData) {
       setFormData({
-        description: editingFeed.description || '',
-        category: editingFeed.category || '',
-        state: editingFeed.status || 'Accepted',
-        file: null
+        title: initialData.title || '',
+        content: initialData.content || '',
+        type: initialData.type || '',
+        status: initialData.status || 'Active',
+        state: initialData.state || 'Pending',
+        is_premium: initialData.is_premium || false,
+        file: null // Don't pre-fill file in edit mode
       })
     } else {
       setFormData({
-        description: '',
-        category: '',
-        state: 'Accepted',
+        title: '',
+        content: '',
+        type: '',
+        status: 'Active',
+        state: 'Pending',
+        is_premium: false,
         file: null
       })
     }
-  }, [editMode, editingFeed])
-
-  // Format category names for display
-  const formatCategoryName = (category) => {
-    return category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-  }
+  }, [editMode, initialData, open])
 
   // Handle form input changes
   const handleInputChange = (field) => (event) => {
@@ -94,6 +100,14 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
         [field]: ''
       }))
     }
+  }
+
+  // Handle switch changes
+  const handleSwitchChange = (field) => (event) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: event.target.checked
+    }))
   }
 
   // Handle file selection
@@ -181,11 +195,23 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
   const validateForm = () => {
     const newErrors = {}
 
-    if (!formData.category) {
-      newErrors.category = 'Category is required'
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required'
     }
 
-    // File is required only when creating new feed
+    if (!formData.type) {
+      newErrors.type = 'Type is required'
+    }
+
+    if (!formData.status) {
+      newErrors.status = 'Status is required'
+    }
+
+    if (!formData.state) {
+      newErrors.state = 'State is required'
+    }
+
+    // File is only required for create mode
     if (!editMode && !formData.file) {
       newErrors.file = 'Please select a file to upload'
     }
@@ -221,11 +247,19 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
     try {
       // Create FormData for file upload
       const uploadData = new FormData()
-      uploadData.append('description', formData.description)
-      uploadData.append('category', formData.category)
+      uploadData.append('title', formData.title)
+      uploadData.append('content', formData.content)
+      uploadData.append('type', formData.type)
+      uploadData.append('status', formData.status)
       uploadData.append('state', formData.state)
+      uploadData.append('is_premium', formData.is_premium)
+      
       if (formData.file) {
         uploadData.append('file', formData.file)
+      }
+
+      if (editMode && initialData) {
+        uploadData.append('id', initialData.id)
       }
 
       // Call the onSubmit prop with the form data
@@ -234,10 +268,10 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
       // Reset form and close modal on success
       handleClose()
     } catch (error) {
-      console.error('Upload error:', error)
+      console.error('Submit error:', error)
       setErrors(prev => ({
         ...prev,
-        submit: 'Failed to upload feed. Please try again.'
+        submit: `Failed to ${editMode ? 'update' : 'create'} blog post. Please try again.`
       }))
     } finally {
       setLoading(false)
@@ -248,13 +282,16 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
   const handleClose = () => {
     // Only reset if not closing due to success
     if (!externalSuccess) {
-    setFormData({
-      description: '',
-      category: '',
-      state: 'Accepted',
-      file: null
-    })
-    setErrors({})
+      setFormData({
+        title: '',
+        content: '',
+        type: '',
+        status: 'Active',
+        state: 'Pending',
+        is_premium: false,
+        file: null
+      })
+      setErrors({})
     }
     setLoading(false)
     setDragActive(false)
@@ -268,7 +305,7 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
     <Dialog 
       open={open} 
       onClose={handleClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: { borderRadius: 2 }
@@ -276,9 +313,9 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
     >
       <DialogTitle sx={{ pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Icon icon='tabler-upload' style={{ fontSize: 24 }} />
+          <Icon icon='tabler-article' style={{ fontSize: 24 }} />
           <Box component="span" sx={{ fontWeight: 600 }}>
-            {editMode ? 'Edit Feed' : 'Upload New Feed'}
+            {editMode ? 'Edit Blog Post' : 'Create New Blog Post'}
           </Box>
         </Box>
       </DialogTitle>
@@ -287,7 +324,7 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
         <DialogContent sx={{ pt: 2 }}>
           {externalSuccess && (
             <Alert severity='success' sx={{ mb: 3 }}>
-              Feed uploaded successfully!
+              Blog post {editMode ? 'updated' : 'created'} successfully!
             </Alert>
           )}
           
@@ -297,85 +334,122 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
             </Alert>
           )}
 
-
-          {/* Description Field */}
+          {/* Title Field */}
           <TextField
             fullWidth
-            label='Description'
-            placeholder='Enter feed description'
-            value={formData.description}
-            onChange={handleInputChange('description')}
-            multiline
-            rows={3}
+            label='Blog Title'
+            placeholder='Enter blog post title'
+            value={formData.title}
+            onChange={handleInputChange('title')}
+            error={!!errors.title}
+            helperText={errors.title}
             sx={{ mb: 3 }}
+            required
           />
 
-          {/* Category Selector */}
-          <FormControl fullWidth sx={{ mb: 3 }} error={!!errors.category}>
-            <InputLabel>Category</InputLabel>
-            <Select
-              value={formData.category}
-              label='Category'
-              onChange={handleInputChange('category')}
-              required
-            >
-              {categories.map((category) => (
-                <MenuItem key={category} value={category}>
-                  {formatCategoryName(category)}
-                </MenuItem>
-              ))}
-            </Select>
-            {errors.category && (
-              <Typography variant='caption' color='error' sx={{ mt: 1, ml: 2 }}>
-                {errors.category}
-              </Typography>
-            )}
-          </FormControl>
+          {/* Type and Status Row */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <FormControl fullWidth error={!!errors.type}>
+              <InputLabel>Type</InputLabel>
+              <Select
+                value={formData.type}
+                label='Type'
+                onChange={handleInputChange('type')}
+                required
+              >
+                {blogTypes.map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.type && (
+                <Typography variant='caption' color='error' sx={{ mt: 1, ml: 2 }}>
+                  {errors.type}
+                </Typography>
+              )}
+            </FormControl>
 
-          {/* State Selector */}
-          <FormControl fullWidth sx={{ mb: 3 }} error={!!errors.state}>
-            <InputLabel>Status</InputLabel>
-            <Select
-              value={formData.state}
-              label='Status'
-              onChange={handleInputChange('state')}
-            >
-              {statuses.map((status) => (
-                <MenuItem key={status} value={status}>
-                  {status}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            <FormControl fullWidth error={!!errors.status}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={formData.status}
+                label='Status'
+                onChange={handleInputChange('status')}
+                required
+              >
+                {statusOptions.map((status) => (
+                  <MenuItem key={status} value={status}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.status && (
+                <Typography variant='caption' color='error' sx={{ mt: 1, ml: 2 }}>
+                  {errors.status}
+                </Typography>
+              )}
+            </FormControl>
+          </Box>
+
+          {/* State and Premium Row */}
+          <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+            <FormControl fullWidth error={!!errors.state}>
+              <InputLabel>State</InputLabel>
+              <Select
+                value={formData.state}
+                label='State'
+                onChange={handleInputChange('state')}
+                required
+              >
+                {stateOptions.map((state) => (
+                  <MenuItem key={state} value={state}>
+                    {state.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </MenuItem>
+                ))}
+              </Select>
+              {errors.state && (
+                <Typography variant='caption' color='error' sx={{ mt: 1, ml: 2 }}>
+                  {errors.state}
+                </Typography>
+              )}
+            </FormControl>
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.is_premium}
+                  onChange={handleSwitchChange('is_premium')}
+                  color="primary"
+                />
+              }
+              label={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Icon icon='tabler-crown' />
+                  <Typography>Premium Content</Typography>
+                </Box>
+              }
+              sx={{ minWidth: 200 }}
+            />
+          </Box>
+
+          {/* Content Field - Wide text area for large content */}
+          <TextField
+            fullWidth
+            label='Content'
+            placeholder='Write your blog post content here...'
+            value={formData.content}
+            onChange={handleInputChange('content')}
+            multiline
+            rows={8}
+            sx={{ mb: 3 }}
+          />
 
           {/* File Upload Area */}
           <Box sx={{ mb: 3 }}>
             <Typography variant='subtitle2' sx={{ mb: 2, fontWeight: 600 }}>
-              {editMode ? 'Upload New Image (Optional)' : 'Upload Image'}
+              {editMode ? 'Update Featured Image (Optional)' : 'Upload Featured Image'}
             </Typography>
-            
-            {/* Show current image in edit mode */}
-            {editMode && editingFeed?.media?.url && !formData.file && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant='caption' color='text.secondary' sx={{ mb: 1, display: 'block' }}>
-                  Current Image:
-                </Typography>
-                <Box
-                  component="img"
-                  src={editingFeed.media.url}
-                  alt={editingFeed.name}
-                  sx={{
-                    width: '100%',
-                    maxHeight: 200,
-                    objectFit: 'contain',
-                    borderRadius: 1,
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    mb: 2
-                  }}
-                />
-              </Box>
-            )}
             
             <Paper
               variant='outlined'
@@ -430,10 +504,10 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
                 <Box>
                   <Icon icon='tabler-cloud-upload' style={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
                   <Typography variant='body2' sx={{ fontWeight: 500, mb: 1 }}>
-                    {dragActive ? 'Drop your image here' : (editMode ? 'Click to upload a new image' : 'Click to upload or drag and drop')}
+                    {dragActive ? 'Drop your image here' : 'Click to upload or drag and drop'}
                   </Typography>
                   <Typography variant='caption' color='text.secondary'>
-                    PNG, JPG, GIF, WebP up to 10MB
+                    PNG, JPG, GIF, WebP up to 10MB {editMode && '(Optional)'}
                   </Typography>
                 </Box>
               )}
@@ -461,7 +535,7 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
             disabled={loading}
             startIcon={loading ? <CircularProgress size={16} /> : <Icon icon={editMode ? 'tabler-check' : 'tabler-upload'} />}
           >
-            {loading ? (editMode ? 'Updating...' : 'Uploading...') : (editMode ? 'Update Feed' : 'Upload Feed')}
+            {loading ? (editMode ? 'Updating...' : 'Creating...') : (editMode ? 'Update Blog Post' : 'Create Blog Post')}
           </Button>
         </DialogActions>
       </form>
@@ -469,4 +543,4 @@ const FeedUploadModal = ({ open, onClose, onSubmit, error: externalError, succes
   )
 }
 
-export default FeedUploadModal
+export default BlogModal

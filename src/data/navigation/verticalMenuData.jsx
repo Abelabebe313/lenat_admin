@@ -10,6 +10,11 @@ const verticalMenuData = () => [
     icon: 'tabler-users',
   },
   {
+    label: 'Appointments',
+    href: '/appointments',
+    icon: 'tabler-calendar',
+  },
+  {
     label: 'Blog Posts',
     href: '/blog',
     icon: 'tabler-article',

@@ -6,6 +6,7 @@ export const GET_FEED_POSTS = gql`
     feed_posts {
       id
       category
+      description
       media_id
       state
       media {
@@ -21,10 +22,10 @@ export const GET_FEED_POSTS = gql`
   }
 `
 
-// Query to fetch users
+// Query to fetch users with pagination and filtering
 export const GET_USERS = gql`
-  query GetUsers {
-    users {
+  query GetUsers($limit: Int, $offset: Int, $where: users_bool_exp) {
+    users(limit: $limit, offset: $offset, where: $where, order_by: {created_at: desc}) {
       id
       email
       phone_number
@@ -38,6 +39,41 @@ export const GET_USERS = gql`
         birth_date
       }
       status
+      roles {
+        role
+      }
+      created_at
+    }
+    users_aggregate(where: $where) {
+      aggregate {
+        count
+      }
+    }
+  }
+`
+
+// Query to fetch user statistics
+export const GET_USER_STATS = gql`
+  query GetUserStats {
+    total: users_aggregate {
+      aggregate {
+        count
+      }
+    }
+    active: users_aggregate(where: {status: {_eq: Active}}) {
+      aggregate {
+        count
+      }
+    }
+    inactive: users_aggregate(where: {status: {_eq: Inactive}}) {
+      aggregate {
+        count
+      }
+    }
+    admins: users_aggregate(where: {roles: {role: {_eq: admin}}}) {
+      aggregate {
+        count
+      }
     }
   }
 `
@@ -45,19 +81,41 @@ export const GET_USERS = gql`
 // Query to fetch blog posts
 export const GET_BLOG_POSTS = gql`
   query GetBlogPosts {
-    blog_posts {
+    blog_posts(order_by: {created_at: desc}) {
       id
+      user_id
+      updated_at
+      type
+      title
+      status
+      state
+      media_id
+      is_premium
+      is_liked
+      is_bookmarked
+      content
+      created_at
       media {
         blur_hash
         file_name
         id
         url
       }
-      state
-      status
-      title
-      type
-      updated_at
+      likes_aggregate {
+        aggregate {
+          count
+        }
+      }
+      comments_aggregate {
+        aggregate {
+          count
+        }
+      }
+      bookmarks_aggregate {
+        aggregate {
+          count
+        }
+      }
     }
   }
 `
@@ -101,10 +159,22 @@ export const GET_MARKETPLACE_PRODUCTS = gql`
       id
       name
       price
+      description
+      is_active
+      is_featured
+      created_at
+      state
+      user_id
+      variants
       product_categories {
         category_id
         category {
           name
+        }
+      }
+      product_categories_aggregate {
+        aggregate {
+          count
         }
       }
       product_images {
@@ -112,6 +182,11 @@ export const GET_MARKETPLACE_PRODUCTS = gql`
           url
           blur_hash
         }
+      }
+    }
+    marketplace_products_aggregate {
+      aggregate {
+        count
       }
     }
   }
@@ -138,6 +213,13 @@ export const GET_MARKETPLACE_ORDERS = gql`
       state
       created_at
       updated_at
+      user {
+        id
+        email
+        profile {
+          full_name
+        }
+      }
     }
   }
 `
@@ -156,6 +238,191 @@ export const GET_STORAGE_BLOG_POST_URL = gql`
   query GetStorageBlogPostUrl($file_name: String!, $object_id: String!) {
     storage_blog_upload(file_name: $file_name, object_id: $object_id) {
       url
+    }
+  }
+`
+
+// Query to get presigned URL for marketplace product image upload
+export const GET_STORAGE_MARKETPLACE_PRODUCT_URL = gql`
+  query GetStorageMarketplaceProductUrl($file_name: String!, $object_id: String!) {
+    storage_feed_upload(file_name: $file_name, object_id: $object_id) {
+      url
+    }
+  }
+`
+
+// Query to fetch marketplace categories
+export const GET_MARKETPLACE_CATEGORIES = gql`
+  query GetMarketplaceCategories {
+    marketplace_categories {
+      id
+      name
+      description
+      is_active
+    }
+  }
+`
+
+// Query to fetch consultant appointments
+export const GET_APPOINTMENTS = gql`
+  query GetAppointments {
+    consultant_appointments {
+      id
+      user_id
+      updated_at
+      type
+      surgery_history
+      state
+      scheduled_at
+      doctor_id
+      medical_condition
+      patient_notes
+      payment_state
+      created_at
+      description
+      doctor {
+        email
+        id
+        phone_number
+        status
+      }
+      user {
+        phone_number
+        email
+        id
+        profile {
+          full_name
+          gender
+          media {
+            url
+          }
+        }
+        roles {
+          role
+        }
+      }
+      room {
+        id
+      }
+    }
+  }
+`
+
+// Query to fetch dashboard statistics
+export const GET_DASHBOARD_STATS = gql`
+  query GetDashboardStats {
+    blog_posts_aggregate {
+      aggregate {
+        count
+      }
+    }
+    consultant_appointments_aggregate {
+      aggregate {
+        count
+      }
+    }
+    consultant_rooms_aggregate {
+      aggregate {
+        count
+      }
+    }
+    feed_bookmarks_aggregate {
+      aggregate {
+        count
+      }
+    }
+    feed_likes_aggregate {
+      aggregate {
+        count
+      }
+    }
+    game_trivia_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_order_items_aggregate {
+      aggregate {
+        count
+      }
+    }
+    user_roles_aggregate {
+      aggregate {
+        count
+      }
+    }
+    users_aggregate {
+      aggregate {
+        count
+      }
+    }
+    profile_patients_aggregate {
+      aggregate {
+        count
+      }
+    }
+    other_subscriptions_aggregate {
+      aggregate {
+        count
+      }
+    }
+    profile_doctors_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_products_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_product_categories_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_orders_aggregate {
+      aggregate {
+        count
+      }
+    }
+    marketplace_categories_aggregate {
+      aggregate {
+        count
+      }
+    }
+    game_trivia_questions_aggregate {
+      aggregate {
+        count
+      }
+    }
+    feed_posts_aggregate {
+      aggregate {
+        count
+      }
+    }
+    enum_feed_type_aggregate {
+      aggregate {
+        count
+      }
+    }
+    enum_blog_type_aggregate {
+      aggregate {
+        count
+      }
+    }
+    blog_bookmarks_aggregate {
+      aggregate {
+        count
+      }
+    }
+    audit_logs {
+      session_user_name
+    }
+    ai_models_aggregate {
+      aggregate {
+        count
+      }
     }
   }
 `
